@@ -19,6 +19,7 @@
   "dependencies": {
     "discord.js": "^11.3.2",
     "node-opus": "^0.2.7",
+    "prompt": "^1.0.0",
     "src": "^1.1.2"
   }
 }
