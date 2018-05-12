@@ -1,0 +1,24 @@
+{
+  "name": "nomarch",
+  "version": "1.0.0",
+  "description": "The Discord Bot for TMOA (The Ministry of Androids)",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheMasteredPanda/Nomarch.git"
+  },
+  "author": "TheMasteredPanda",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TheMasteredPanda/Nomarch/issues"
+  },
+  "homepage": "https://github.com/TheMasteredPanda/Nomarch#readme",
+  "dependencies": {
+    "discord.js": "^11.3.2",
+    "node-opus": "^0.2.7",
+    "src": "^1.1.2"
+  }
+}
