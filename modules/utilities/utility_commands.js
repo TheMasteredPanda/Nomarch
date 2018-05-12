@@ -11,7 +11,7 @@ exports.init = (client, app) => {
 				{
 					name: 'stats',
 					usage: 'View the important statistics of the bot.',
-					execute: msg => {
+					execute: (msg, args) => {
 						const embed = new Discord.RichEmbed();
 						const used = process.memoryUsage().heapUsed / 1024 / 1024;
 						embed.addField('Memory Used', (Math.round(used * 100) / 100) + ' MB');

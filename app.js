@@ -11,7 +11,7 @@ commands = [
     {
         name: 'test',
         usage: 'To test that the command is registered.',
-        execute: msg => {
+        execute: (msg, args) => {
             msg.channel.send('Test complete.')
         },
     }
@@ -55,8 +55,18 @@ function onCommand(msg, args, cmd) {
 		return;
 	}
 	
-	console.log('Executing command ' + cmd.name + '.');
-	cmd.execute(msg);
+	args.shift();
+	
+	if (cmd.hasOwnProperty('arguments')) {
+		if (args.length < cmd.arguments) {
+			msg.channel.send('Not enough arguments where supplied for this command.');
+			return;
+		}
+	}
+	
+	console.log('Executing command ' + cmd.name + ' with args ' + args + '.');
+
+	cmd.execute(msg, args);
 }
 
 client.on('message', msg => {
@@ -78,7 +88,9 @@ client.on('message', msg => {
 	for (var i = 0; i < commands.length; i++) {
 	    var cmd = commands[i];
 	    
-	    if (args[0].replace('.', '') !== cmd.name) {
+	    console.log(args.length);
+	    
+	    if (args[0] !== '.' + cmd.name) {
 	        console.log('Command ' + cmd.name + ' was not invoked.');
             continue;
         }
@@ -125,6 +137,8 @@ fs.readdir('./modules', (error, list) => {
 				console.log('File ' + entry + ' is not a module.');
 				continue;
 			}
+			
+			console.log(entry);
 		
 		
 			var jsModule = require('./modules/' + module + '/' + entry);
