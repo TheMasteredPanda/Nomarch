@@ -3,6 +3,12 @@ const readLine = require('readline');
 
 var commands = [];
 
+
+/**
+ * Used to walk through the console command map.
+ * @param args - arguments of the command inputted.
+ * @param command - the command.
+ */
 function onCommand(args, command) {
 	if (args === undefined) {
 		return;
@@ -69,6 +75,11 @@ exports.init = (client, app) => {
 	})
 };
 
+/**
+ * Add a console command. If the console command name is already
+ * being used in the command map,it will reject the command map.
+ * @param cmd - the console command to add.
+ */
 exports.addCommand = cmd => {
 	for (var command in commands) {
 		if (command.name !== cmd.name) {
