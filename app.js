@@ -7,6 +7,11 @@ client.on('ready', () => {
    console.log('Logged in as ' + client.user.tag + '.')
 });
 
+
+/**
+ * The command map.
+ * @type {*[]}
+ */
 commands = [
     {
         name: 'test',
@@ -17,6 +22,13 @@ commands = [
     }
 ];
 
+/**
+ * Used to walk through a command tree and execute the correct
+ * command, with the right amount of arguments.
+ * @param msg - the msg sent.
+ * @param args - the suspected arguments.
+ * @param cmd - the root of the current iteration of the command tree.
+ */
 function onCommand(msg, args, cmd) {
 	console.log('Command arguments: ' + args);
 	
@@ -59,7 +71,7 @@ function onCommand(msg, args, cmd) {
 	
 	if (cmd.hasOwnProperty('arguments')) {
 		if (args.length < cmd.arguments) {
-			msg.channel.send('Not enough arguments where supplied for this command.');
+			msg.channel.send('Not enough arguments were supplied for this command.');
 			return;
 		}
 	}
@@ -77,29 +89,29 @@ client.on('message', msg => {
 	console.log('Message received: ' + msg.content);
 	
 	if (!msg.content.startsWith('.')) {
-		console.log('Message' + msg.content + ' is not a command.');
+		console.log('Message "' + msg.content + '" is not a command.');
 		return;
 	}
 	
-	console.log('Message is a command.');
+	console.log('Attempting to execute command ' + msg.content);
 	
 	var args = msg.content.split(' ');
 	
 	for (var i = 0; i < commands.length; i++) {
 	    var cmd = commands[i];
 	    
-	    console.log(args.length);
-	    
 	    if (args[0] !== '.' + cmd.name) {
-	        console.log('Command ' + cmd.name + ' was not invoked.');
-            continue;
+	        continue;
         }
         
-        console.log('Command ' + cmd.name + ' was invoked.');
-		onCommand(msg, args, cmd);
+        onCommand(msg, args, cmd);
     }
 });
 
+/**
+ * To add a command to the command map.
+ * @param cmd - command to add to the command map.
+ */
 exports.addCommand = cmd => {
   for (var i = 0; i < commands.length; i++) {
       if (commands[i].name === cmd.name) {
@@ -110,25 +122,20 @@ exports.addCommand = cmd => {
   
   console.log('Added command ' + cmd.name + '.');
   commands.push(cmd);
-  console.log('Command map: ');
-  
-  for (var i = 0; i < commands.length; i++) {
-      console.log(commands[i].name);
-  }
 };
 
 
-fs.readdir('./modules', (error, list) => {
+fs.readdir('./modules', async (error, list) => {
     for (var i = 0; i < list.length; i++) {
         var module = list[i];
-        var dirStat = fs.lstatSync('./modules/' + module);
+        var dirStat = await fs.lstatSync('./modules/' + module);
         
         if (!dirStat.isDirectory()) {
         	continue;
 		}
         
         
-        var files = fs.readdirSync('./modules/' + module);
+        var files = await fs.readdirSync('./modules/' + module);
 	
 		for (var j = 0; j < files.length; j++) {
 			var entry = files[j];
@@ -141,7 +148,7 @@ fs.readdir('./modules', (error, list) => {
 			console.log(entry);
 		
 		
-			var jsModule = require('./modules/' + module + '/' + entry);
+			var jsModule = await require('./modules/' + module + '/' + entry);
 		
 			if (typeof jsModule.init !== 'function') {
 				console.error('Module ' + entry + ' did not have the init function. Could not initiate this module.');
@@ -149,9 +156,14 @@ fs.readdir('./modules', (error, list) => {
 			}
 		
 			console.log('Initiated module ' + entry + '.');
-			jsModule.init(client, this);
+			await jsModule.init(client, this);
 		}
     }
 });
 
-client.login(config.apiKey);
+
+rl.on('line', )
+
+setTimeout(async () => {
+	await client.login(config.apiKey)
+}, 150);
