@@ -15,7 +15,8 @@ client.on('ready', () => {
 commands = [
     {
         name: 'test',
-        usage: 'To test that the command is registered.',
+        usage: '.test <command>',
+		description: 'To test that the command is registered.',
         execute: (msg, args) => {
             msg.channel.send('Test complete.')
         },
@@ -160,9 +161,6 @@ fs.readdir('./modules', async (error, list) => {
 		}
     }
 });
-
-
-rl.on('line', )
 
 setTimeout(async () => {
 	await client.login(config.apiKey)

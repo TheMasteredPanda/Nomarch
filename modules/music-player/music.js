@@ -1,6 +1,7 @@
 const ytdl = require('ytdl-core');
 const Discord = require('discord.js');
 const fs = require('fs');
+const consoleModule = require('../console-commands/commands');
 
 var info = {
 	playing: false,
@@ -9,6 +10,7 @@ var info = {
 };
 
 var config = null;
+var consoleSongEntry = 'Title: {0}\nUploaded By: {1}\nAdded By: {2}, Duration: {3}\n';
 
 function finish(dispatcher) {
 	console.log('Music ended.');
@@ -114,8 +116,13 @@ exports.init = (client, app) => {
 							return;
 						}
 						
+						if (!msg.member.voiceChannel) {
+							msg.channel.send('You must be in the voice channel when adding new songs.');
+							return;
+						}
+						
 						if (info.channel !== msg.member.voiceChannel.name) {
-							console.log("You're not in the same voice channel as the bot, " + msg.author.tag + '.');
+							msg.channel.send("You're not in the same voice channel as the bot, " + msg.author.tag + '.');
 							return;
 						}
 						
@@ -277,10 +284,6 @@ exports.init = (client, app) => {
 				name: 'settings',
 				usage: 'Parent command for music settings.',
 				execute: (msg, args) => {
-					if (msg.channel.name !== config.channel) {
-						return;
-					}
-					
 					var embed = new Discord.RichEmbed();
 					embed.setTitle('Music Settings');
 					embed.addField('Bot Command Channel', config.channel);
@@ -306,4 +309,35 @@ exports.init = (client, app) => {
 			}
 		]
 	});
+	
+	consoleModule.addCommand({
+		name: 'music',
+		usage: 'music <command>',
+		description: 'Parent command for the music function.',
+		execute: null,
+		children: [
+			{
+				name: 'queue',
+				usage: 'music queue [<command>]',
+				execute: args => {
+					if (args.length === 0) {
+						var message = 'Queue:\n';
+						
+						if (info.queue !== undefined) {
+							for (var i = 0; i < info.queue.length; i++) {
+								var entry = info.queue[i];
+								message = message + consoleSongEntry.replace(entry.title, entry.ytChannel, entry.addedBy, entry.duration);
+							}
+						}
+						
+						if (message === 'Queue:\n') {
+							message = 'Queue empty.'
+						}
+						
+						console.log(message);
+					}
+				}
+			}
+		]
+	})
 };
