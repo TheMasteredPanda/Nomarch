@@ -23,7 +23,9 @@ exports.init = (client, app) => {
 	permissionMap = require('./permission');
 };
 
-
+/**
+ * Save the permission map to the permission json file.
+ */
 function save() {
 	setTimeout(async () => {
 		await fs.writeFile('./modules/permission-manager/permissions.json', permissionMap);
