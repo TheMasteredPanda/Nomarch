@@ -64,7 +64,10 @@ exports.init = (client, app) => {
 		channel: null
 	};
 	
-	fs.writeFileSync('./modules/music-player/config.json', JSON.stringify(data));
+	if (!fs.existsSync('./modules/music-player/config.json')) {
+		fs.writeFileSync('./modules/music-player/config.json', JSON.stringify(data));
+	}
+	
 	config = require('./config');
 	
 	
