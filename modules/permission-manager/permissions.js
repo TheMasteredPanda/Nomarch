@@ -63,7 +63,7 @@ exports.hasPermission = (user, permission) => {
 	}
 	
 	return false;
-}
+};
 
 /**
  * Add a permission to the user.
