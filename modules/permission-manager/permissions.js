@@ -4,23 +4,20 @@ const fs = require('fs');
  * Permission Manager Module.
  */
 
-var permissionMap;
-var client;
+var permissionMap = null;
+var client = null;
 
 exports.init = (client, app) => {
 	this.client = client;
 	if (!fs.existsSync('./modules/permission-manager/permissions.json')) {
-		setTimeout(async () => {
-			if (!await fs.exists()) {
-				await fs.writeFile('./modules/permission-manager/permissions.json', {
-					roles: {},
-					users: {}
-				});
-			}
-		}, 100)
+		fs.writeFileSync('./modules/permission-manager/permissions.json', JSON.stringify({
+			roles: {},
+			users: {}
+		}));
 	}
 	
-	permissionMap = require('./permission');
+	permissionMap = require('./permissions');
+	
 };
 
 /**
@@ -38,15 +35,26 @@ function save() {
  * @param permission - permission.
  * @returns {boolean} - true if the user has the permission, else false.
  */
-function hasPermission(user, permission) {
-	for (var i = 0; i < user.roles.values().length; i++) {
-		var role = user.roles;
+exports.hasPermission = (user, permission) => {
+	
+	for (var i = 0; i < user.roles.length; i++) {
+		var role = user.roles[i];
 		
 		if (!permissionMap.roles.hasOwnProperty(role.name)) {
 			continue;
 		}
 		
-		return permissionMap.roles[role.name].hasOwnProperty(permission);
+		return user.guild.owner.id === user.id || role.hasPermission('ADMINISTRATOR') || permissionMap.roles[role.name].hasOwnProperty(permission);
+	}
+	
+	if (permissionMap === undefined) {
+		console.log('Permission map is undefined.');
+		return false;
+	}
+	
+	if (permissionMap.users === undefined) {
+		console.log('Users is undefined.');
+		return false;
 	}
 	
 	if (permissionMap.users.hasOwnProperty(user.id)) {
@@ -62,26 +70,26 @@ function hasPermission(user, permission) {
  * @param userId - user id.
  * @param permission - permission.
  */
-function addUserPermission(userId, permission) {
+exports.addUserPermission = (userId, permission) => {
 	if (!permissionMap.users.hasOwnProperty(userId)) {
 		permissionMap.users[userId] = [];
 	}
 	
 	if (permissionMap.users[userId].hasOwnProperty(permission)) {
-		console.error('Attempted to add permission ' + permission + ' to user ' + userId + ', but the permission was already assigned to this user.')
+		console.error('Attempted to add permission ' + permission + ' to user ' + userId + ', but the permission was already assigned to this user.');
 		return;
 	}
 	
 	permissionMap.users[userId][permissionMap.users[userId].length + 1] = permission;
 	save();
-}
+};
 
 /**
  * Add a permission to a role.
  * @param role - role name.
  * @param permission - permission.
  */
-function addRolesPermisson(role, permission) {
+exports.addRolesPermission = (role, permission) => {
 	if (!permissionMap.roles.hasOwnProperty(role)) {
 		permissionMap.roles[role] = [];
 	}
@@ -100,7 +108,7 @@ function addRolesPermisson(role, permission) {
  * @param userId - user.
  * @param permission - permission.
  */
-function removeUserPermission(userId, permission) {
+exports.removeUserPermission = (userId, permission) => {
 	if (!permissionMap.users.hasOwnProperty(userId)) {
 		return;
 	}
@@ -125,7 +133,7 @@ function removeUserPermission(userId, permission) {
  * @param role - role name.
  * @param permission - permission.
  */
-function removeRolePermission(role, permission) {
+exports.removeRolePermission = (role, permission) => {
 	if (!permissionMap.roles.hasOwnProperty(role)) {
 		return;
 	}
@@ -149,7 +157,7 @@ function removeRolePermission(role, permission) {
  * Remove a user from the permission map.
  * @param userId - user.
  */
-function removeUser(userId) {
+exports.removeUser = userId => {
 	if (!permissionMap.users.hasOwnProperty(userId)) {
 		return;
 	}
@@ -162,7 +170,7 @@ function removeUser(userId) {
  * Remove a role from the permission map.
  * @param role - role.
  */
-function removeRole(role) {
+exports.removeRole = role => {
 	if (!permissionMap.roles.hasOwnProperty(role)) {
 		return;
 	}

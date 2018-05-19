@@ -109,7 +109,7 @@ exports.init = (client, app) => {
 	
 	rl.on('error', err => {
 		console.error(err);
-	})
+	});
 };
 
 /**

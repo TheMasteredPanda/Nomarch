@@ -2,11 +2,15 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const fs = require('fs');
 const config = require('./config.json');
+var permissionManager;
+
+if (fs.existsSync('./modules/permission-manager/permissions.js')) {
+	permissionManager = require('./modules/permission-manager/permissions');
+}
 
 client.on('ready', () => {
    console.log('Logged in as ' + client.user.tag + '.')
 });
-
 
 /**
  * The command map.
@@ -17,6 +21,7 @@ commands = [
         name: 'test',
         usage: '.test <command>',
 		description: 'To test that the command is registered.',
+		permission: 'nomarch.test',
         execute: (msg, args) => {
             msg.channel.send('Test complete.')
         },
@@ -36,6 +41,13 @@ function onCommand(msg, args, cmd) {
 	if (args[0].replace('.', '') !== cmd.name) {
 		console.log('Is not command: ' + cmd.name + '.');
 		return;
+	}
+	
+	if (permissionManager !== null && cmd.hasOwnProperty('permission')) {
+		if (!permissionManager.hasPermission(msg.member, cmd.permission)) {
+			msg.channel.send('You do not have permission ' + cmd.permission + ' to invoke command ' + cmd.usage + '.');
+			return;
+		}
 	}
 	
 	console.log('Is the command: ' + cmd.name + '.');
@@ -134,8 +146,7 @@ fs.readdir('./modules', async (error, list) => {
         if (!dirStat.isDirectory()) {
         	continue;
 		}
-        
-        
+		
         var files = await fs.readdirSync('./modules/' + module);
 	
 		for (var j = 0; j < files.length; j++) {
