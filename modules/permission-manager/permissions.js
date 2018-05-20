@@ -1,5 +1,6 @@
 const fs = require('fs');
 const Discord = require('discord.js');
+const consoleCommands = require('../console-commands/commands');
 
 /**
  * Permission Manager Module.
@@ -161,6 +162,8 @@ exports.init = (client, app) => {
 			}
 		]
 	});
+	
+	
 };
 
 /**
