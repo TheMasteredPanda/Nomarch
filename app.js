@@ -55,7 +55,16 @@ function onCommand(msg, args, cmd) {
 	if (args.length > 1) {
 		if (args[0] !== undefined) {
 			if (args[1] === 'usage') {
-				msg.channel.send(cmd.usage);
+				const embed = new Discord.RichEmbed();
+				embed.addField('Command Usage:', cmd.usage);
+				msg.channel.send(embed);
+				return;
+			}
+			
+			if (args[1] === 'desc' || args[1] === 'description') {
+				const embed = new Discord.RichEmbed();
+				embed.addField('Command Description:', cmd.description);
+				msg.channel.send(embed);
 				return;
 			}
 			

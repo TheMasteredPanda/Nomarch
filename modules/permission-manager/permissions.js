@@ -17,12 +17,12 @@ exports.init = (client, app) => {
 	}
 	
 	permissionMap = require('./permissions.json');
+	console.log(JSON.stringify(permissionMap));
 	
 	app.addCommand({
 		name: 'pem',
 		usage: '.pem <command>',
 		description: 'Parent command to the permission manager.',
-		permission: 'nomarch.permissions.info',
 		execute: null,
 		children: [
 			{
@@ -31,12 +31,12 @@ exports.init = (client, app) => {
 				arguments: 1,
 				description: 'View all the permission manager information for that role.',
 				execute: (msg, args) => {
-					var permissions = null;
-					var name = null;
+					let permissions = [];
+					let name = null;
 					
 					if (args[0].match(/^[A-Za-z.\s]+#\d\d\d\d/g)) {
 						var argName = args[0].split('#');
-						var user = msg.guild.members.values().find(u => u.name === argName[0] && u.user.discriminator === argName[1]);
+						var user = msg.guild.members.find(u => u.name === argName[0] && u.user.discriminator === argName[1]);
 						
 						if (user === undefined) {
 							msg.channel.send('Could not find ' + args[0] + ' in this guild.');
@@ -46,17 +46,23 @@ exports.init = (client, app) => {
 						permissions = permissionMap.users[user.id];
 						name = user.name;
 					} else {
-						var role = msg.guild.roles.values().find(r => r.name === args[0]);
+						var role = msg.guild.roles.find(r => r.name === args[0]);
 						
 						if (role === undefined) {
 							msg.channel.send('Could not find role ' + args[0] + ' in this guild.');
 							return;
 						}
 						
+						if (!permissionMap.roles.hasOwnProperty(role.id)) {
+							msg.channel.send('Could not find role ' + role.name + ' in the permissions map.');
+							return;
+						} 
+						
 						permissions = permissionMap.roles[role.id];
 						name = args[0];
 					}
  				
+					
 					var embed = new Discord.RichEmbed();
 					embed.setTitle('Permissions for role ' + name + '.');
 					
@@ -75,14 +81,14 @@ exports.init = (client, app) => {
 				description: 'Add a permission to a role or user.',
 				execute: (msg, args) => {
 					if (!args[0].match(/^[A-Za-z.\s]+#\d\d\d\d/g)) {
-						var role = msg.guild.roles.values().find(r => r.name === args[0]);
+						var role = msg.guild.roles.find(r => r.name === args[0]);
 						
-						if (role === undefined) {
+						if (role === undefined || role === null) {
 							msg.channel.send('Role ' + args[0] + ' is not an actual role on this guild.');
 							return;
 						}
 	
-						if (permissionMap.roles[role.id].hasOwnProperty(args[1])) {
+						if (permissionMap.roles.hasOwnProperty(role.id) && permissionMap.roles[role.id].hasOwnProperty(args[1])) {
 							msg.channel.send('Role already has the permission node ' + args[1] + '.');
 							return;
 						}
@@ -91,14 +97,14 @@ exports.init = (client, app) => {
 						msg.channel.send('Added permission node ' + args[1] + ' to role ' + args[0] + '.');
 					} else {
 						var name = args[0].split('#');
-						var user = msg.guild.members.values().find(u => u.name === name[0] && u.user.discriminator === name[1]);
+						var user = msg.guild.members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
 						
 						if (user === undefined) {
 							msg.channel.send('User ' + args[0] + ' was not found on this guild.');
 							return;
 						}
 						
-						if (permissionMap.users[user.id].hasOwnProperty(args[1])) {
+						if (permissionMap.users.hasOwnProperty(user.id) && permissionMap.users[user.id].hasOwnProperty(args[1])) {
 							msg.channel.send('User ' + args[0] + ' already has the permission node ' + args[0] + '.');
 							return;
 						}
@@ -115,14 +121,19 @@ exports.init = (client, app) => {
 				description: 'Remove a permission from a role or user.',
 				execute: (msg, args) => {
 					if (!args[0].match(/^[A-Za-z.\s]+#\d\d\d\d/g)) {
-						var role = msg.guild.roles.values().find(r => r.name === args[0]);
+						var role = msg.guild.roles.find(r => r.name === args[0]);
 						
 						if (role === undefined) {
 							msg.channel.send('Role ' + args[0] + ' is not an actual role on this guild.');
 							return;
 						}
 						
-						if (!permissionMap.roles[role.id].hasOwnProperty(args[1])) {
+						if (!permissionMap.roles.hasOwnProperty(role.id)) {
+							msg.channel.send('Role ' + role.name + ' is not in the command map.');
+							return;
+						}
+						
+						if (permissionMap.roles[role.id].hasOwnProperty(args[1])) {
 							msg.channel.send('Role does not have the permission node ' + args[1] + '.');
 							return;
 						}
@@ -131,7 +142,7 @@ exports.init = (client, app) => {
 						msg.channel.send('Removed permission node ' + args[1] + ' to role ' + args[0] + '.');
 					} else {
 						var name = args[0].split('#');
-						var user = msg.guild.members.values().find(u => u.name === name[0] && u.user.discriminator === name[1]);
+						var user = msg.guild.members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
 						
 						if (user === undefined) {
 							msg.channel.send('User ' + args[0] + ' was not found on this guild.');
@@ -156,48 +167,51 @@ exports.init = (client, app) => {
  * Save the permission map to the permission json file.
  */
 function save() {
+	console.log(JSON.stringify(permissionMap));
+	
 	setTimeout(async () => {
-		await fs.writeFile('./modules/permission-manager/permissions.json', permissionMap);
-		permissionMap = require('./permissions.json')
+		await fs.writeFile('./modules/permission-manager/permissions.json', JSON.stringify(permissionMap), err => {
+			if (err) console.error(err);
+			permissionMap = require('./permissions.json');
+		});
 	}, 150);
 }
 
 /**
- * Check if a user has the permission.
- * @param user - user.
+ * Check if a member has the permission.
+ * @param member - member.
  * @param permission - permission.
  * @returns {boolean} - true if the user has the permission, else false.
  */
-exports.hasPermission = (user, permission) => {
-	if (user.guild.owner.id === user.id ) {
+exports.hasPermission = (member, permission) => {
+	if (member.guild.owner.id === member.id ) {
 		return true;
 	}
 	
+	if (member.hasPermission('ADMINISTRATOR')) {
+		return true;
+	}
 	
-	for (var i = 0; i < user.roles.length; i++) {
-		var role = user.roles[i];
-		
-		if (!permissionMap.roles.hasOwnProperty(role.name)) {
-			continue;
+	if (member.roles.size > 0) {
+		for (const r of member.roles.values()) {
+			if (permissionMap.roles.hasOwnProperty(r.id)) {
+				for (var i = 0; i < permissionMap.roles[r.id].length; i++) {
+					var perm = permissionMap.roles[r.id][i];
+					
+					if (perm === permission) {
+						return true;
+					}
+				}
+			}
 		}
-		
-		return role.hasPermission('ADMINISTRATOR') || permissionMap.roles[role.name].hasOwnProperty(permission);
 	}
 	
 	if (permissionMap === undefined) {
-		console.log('Permission map is undefined.');
 		return false;
 	}
 	
-	console.log('Users is undefined, ' + JSON.stringify(permissionMap));
-	
-	
-	if (permissionMap.users === undefined) {
-		return false;
-	}
-	
-	if (permissionMap.users.hasOwnProperty(user.id)) {
-		var permUser = permissionMap.users[role.name];
+	if (permissionMap.users.hasOwnProperty(member.id)) {
+		var permUser = permissionMap.users[member.id];
 		return permUser.hasOwnProperty(permission);
 	}
 	
@@ -269,23 +283,29 @@ exports.removeUserPermission = (userId, permission) => {
 
 /**
  * Remove a permission from the role.
- * @param role - role name.
+ * @param roleId - role name.
  * @param permission - permission.
  */
 exports.removeRolePermission = (roleId, permission) => {
 	if (!permissionMap.roles.hasOwnProperty(roleId)) {
-		return;
-	}
-	
-	if (!permissionMap.roles[roleId].hasOwnProperty(permission)) {
+		console.log('Role id was not found in json object.');
 		return;
 	}
 	
 	for (var i = 0; i < permissionMap.roles[roleId].length; i++) {
 		var perm = permissionMap.roles[roleId][i];
 		
+		console.log('Iterating permission: ' + perm);
+		
 		if (permission === perm) {
-			delete permissionMap.roles[roleId][i];
+			console.log('Matched permission.');
+			
+			if (permissionMap.roles[roleId].length <= 1 || permissionMap.roles[roleId] === null) {
+				delete permissionMap.roles[roleId];
+			} else {
+				delete permissionMap.roles[roleId][i];
+			}
+			
 			save();
 			return;
 		}
@@ -307,7 +327,7 @@ exports.removeUser = userId => {
 
 /**
  * Remove a role from the permission map.
- * @param role - role.
+ * @param roleId - role.
  */
 exports.removeRole = roleId => {
 	if (!permissionMap.roles.hasOwnProperty(roleId)) {
