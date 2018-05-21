@@ -9,7 +9,7 @@ if (fs.existsSync('./modules/permission-manager/permissions.js')) {
 }
 
 client.on('ready', () => {
-   console.log('Logged in as ' + client.user.tag + '.')
+	console.log('Logged in as ' + client.user.tag + '.');
 });
 
 /**
@@ -166,13 +166,10 @@ fs.readdir('./modules', async (error, list) => {
 				continue;
 			}
 			
-			console.log(entry);
-		
-		
 			var jsModule = await require('./modules/' + module + '/' + entry);
 		
 			if (typeof jsModule.init !== 'function') {
-				console.error('Module ' + entry + ' did not have the init function. Could not initiate this module.');
+				console.error('Module ' + module + '/' + entry + ' did not have the init function. Could not initiate this module.');
 				continue;
 			}
 		

@@ -24,9 +24,7 @@ function onCommand(args, cmd) {
 		return;
 	}
 	
-	console.log('Argument length: ' + args.length);
-	
-	if (args.length === 1) {
+	if (args.length >= 1) {
 		if (args[0] === 'usage') {
 			console.log(cmd.usage);
 			return;
@@ -40,10 +38,8 @@ function onCommand(args, cmd) {
 		if (cmd.hasOwnProperty('children')) {
 			for (var j = 0; j < cmd.children.length; j++) {
 				var child = cmd.children[j];
-				console.log('Iterating over ' + JSON.stringify(child));
 				
 				if (args[0] !== child.name) {
-					console.log('Argument ' + args[0] + ' is not ' + cmd.name + ' ' + child.name);
 					continue;
 				}
 				
@@ -72,36 +68,25 @@ exports.init = (client, app) => {
 		output: process.stdout
 	});
 	
-	console.log('Created interface.');
-	
 	
 	rl.on('line', input => {
-		console.log('Line input: ' + input);
-		
 		if (input === undefined) {
-			console.log('Input undefined.');
 			return;
 		}
 		
 		if (commands === undefined || commands.length === 0 ) {
-			console.log('Commands undefined or empty.');
 			return;
 		}
 		
 		var args = input.split(' ');
 		
-		console.log('Arguments: ' + args);
-		
 		for (var i = 0; i < commands.length; i++) {
 			var cmd = commands[i];
-			console.log('Iterating over command: ' + JSON.stringify(cmd));
 			
 			if (args[0] !== cmd.name) {
-				console.log('Command invoked is not command ' + cmd.name + '.');
 				continue;
 			}
 			
-			console.log('Command ' + cmd.name + ' invoked.');
 			args.shift();
 			onCommand(args, cmd);
 		}
