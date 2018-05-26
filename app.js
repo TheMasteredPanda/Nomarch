@@ -43,8 +43,8 @@ function onCommand(msg, args, cmd) {
 		return;
 	}
 	
-	if (permissionManager !== null && cmd.hasOwnProperty('permission')) {
-		if (!permissionManager.hasPermission(msg.member, cmd.permission)) {
+	if (permissionManager !== null && permissionManager != null && cmd.hasOwnProperty('permission')) {
+		if (!permissionManager.hasPermission(msg.author.id, cmd.permission)) {
 			msg.channel.send('You do not have permission ' + cmd.permission + ' to invoke command ' + cmd.usage + '.');
 			return;
 		}
