@@ -11,29 +11,27 @@ var info = {
 
 var config = null;
 var consoleSongEntry = 'Title: {0}\nUploaded By: {1}\nAdded By: {2}, Duration: {3}\n';
+var data = {
+	channel: null
+};
+
 
 function finish(dispatcher) {
-	console.log('Music ended.');
 	info.queue.shift();
-	console.log('Removed music entry from the queue.');
-	
+
 	console.log(JSON.stringify(info));
 	info.playing = false;
 	if (info.queue.length === 0) {
-		console.log('No more songs to play.');
 		info.queue = [];
 
 		
 		setTimeout(() => {
 			if (!info.playing) {
-				console.log('Leaving voice channel.');
 				dispatcher.player.voiceConnection.channel.leave();
 				delete info.channel;
 			}
 		}, 240000);
 	} else {
-		console.log('There are more songs to play.');
-		
 		setTimeout(async () => {
 			await play(info.queue[0], { seek: 0, volume: 1 }, dispatcher.player.voiceConnection)
 		}, 150)
@@ -49,7 +47,7 @@ async function play(entry, settings, connection) {
 		
 		const stream = await ytdl(entry.url, { filter: 'audioonly'});
 		const dispatcher = await connection.playStream(stream, settings);
-		console.log('Playing song ' + entry.title);
+		console.log(`Playing song ${entry.title}`);
 		
 		dispatcher.on('end', () => {
 			finish(dispatcher);
@@ -60,23 +58,7 @@ async function play(entry, settings, connection) {
 }
 
 exports.init = (client, app) => {
-	var data = {
-		channel: null
-	};
-	
-	if (!fs.existsSync('./modules/music-player/config.json')) {
-		fs.writeFileSync('./modules/music-player/config.json', JSON.stringify(data));
-	}
-	
-	config = require('./config');
-	
-	
-	setInterval(() => {
-		fs.writeFileSync('./modules/music-player/config.json', JSON.stringify(config));
-		config = require('./config');
-	}, 30000);
-	
-	
+	save();
 	app.addCommand({
 		name: 'music',
 		usage: 'Play a song in a channel.',
@@ -84,7 +66,9 @@ exports.init = (client, app) => {
 		children: [
 			{
 				name: 'queue',
-				usage: 'Queue music for the bot to play.',
+				usage: '.music queue <url or video id>.',
+				description: 'Queue music for the bot to play.',
+				permission: 'nomarch.music.queue',
 				execute: (msg, args) => {
 					if (args.length === 0) {
 						if (msg.channel.name !== config.channel) {
@@ -96,16 +80,16 @@ exports.init = (client, app) => {
 							return;
 						}
 						
-						var embed = new Discord.RichEmbed();
+						let embed = new Discord.RichEmbed();
 						
 						if (info.queue.length === 0) {
 							msg.channel.send('No queue has been formed for this guild.');
 							return;
 						}
 						
-						for (var i = 0; i < info.queue.length; i++) {
-							var entry = info.queue[i];
-							embed.addField('Song ' + i, 'Title: ' + entry.title + '\nDuration: ' + entry.duration + '\nUploaded By: ' + entry.ytChannel + '\nAdded By: ' + entry.addedBy + '.'); //TODO
+						for (let i = 0; i < info.queue.length; i++) {
+							let entry = info.queue[i];
+							embed.addField('Song ' + i, `Title: ${entry.title}\nDuration: ${entry.duration}\nUploaded By: ${entry.ytChannel}\nAdded By: ${entry.addedBy}.`);
 						}
 						
 						msg.channel.send(embed);
@@ -125,14 +109,14 @@ exports.init = (client, app) => {
 						}
 						
 						if (info.channel !== msg.member.voiceChannel.name) {
-							msg.channel.send("You're not in the same voice channel as the bot, " + msg.author.tag + '.');
+							msg.channel.send(`You're not in the same voice channel as the bot, ${msg.author.tag}.`);
 							return;
 						}
 						
 						
-						var url = args[0].includes('://') ? args[0] : 'https://www.youtube.com/watch?v=' + args[0];
+						let url = args[0].includes('://') ? args[0] : 'https://www.youtube.com/watch?v=' + args[0];
 						
-						var songEntry = {
+						let songEntry = {
 							url: url,
 							addedBy: msg.author.tag
 						};
@@ -153,14 +137,16 @@ exports.init = (client, app) => {
 							songEntry.duration = ytInfo.length_seconds;
 							await play(songEntry, { seek: 0, volume: 1}, msg.member.voiceChannel.connection);
 							info.queue.push(songEntry);
-							msg.channel.send('Added your song, ' + msg.author.tag + '.');
+							msg.channel.send(`Added your song, ${msg.author.tag}.`);
 						});
 					}
 				}
 			},
 			{
 				name: 'join',
-				usage: "Command the bot to join the channel you're in.",
+				usage: '.music join',
+				description: "Command the bot to join the channel you're in.",
+				permission: 'nomarch.music.join',
 				execute: (msg, args) => {
 					if (msg.channel.name !== config.channel) {
 						return;
@@ -177,7 +163,7 @@ exports.init = (client, app) => {
 					}
 					
 					if (info.channel != null && info.channel === msg.member.voiceChannel.name) {
-						msg.channel.send('Already joined.');
+						msg.channel.send(`Already joined channel ${info.channel}.`);
 						return;
 					}
 					
@@ -187,7 +173,9 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'leave',
-				usage: 'Command the bot to leave the channel is it in.',
+				usage: '.mod leave',
+				description: 'Command the bot to leave the channel is it in.',
+				permission: 'nomarch.music.leave',
 				execute: (msg, args) => {
 					if (msg.channel.name !== config.channel) {
 						return;
@@ -205,7 +193,9 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'pause',
-				usage: 'Pause the music the bot is serving.',
+				usage: '.music pause',
+				description: 'Pause the music the bot is serving.',
+				permission: 'nomarch.music.pause',
 				execute: (msg, args) => {
 					if (msg.channel.name !== config.channel) {
 						return;
@@ -233,7 +223,9 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'unpause',
-				usage: 'Stop pausing the music the bot is serving.',
+				usage: '.music unpause',
+				permission: 'nomarch.music.unpause',
+				description: 'Stop pausing the music the bot is serving.',
 				execute: (msg, args) => {
 					if (msg.channel.name !== config.channel) {
 						return;
@@ -262,7 +254,9 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'skip',
-				usage: 'Skip the current song.',
+				usage: '.music skip',
+				description: 'Skip the current song.',
+				permission: 'nomarch.music.skip',
 				execute: (msg, args) => {
 					if (msg.channel.name !== config.channel) {
 						return;
@@ -277,7 +271,7 @@ exports.init = (client, app) => {
 						}
 						
 						msg.channel.send('Skipping current song.');
-						var dispatcher = msg.member.voiceChannel.connection.dispatcher;
+						let dispatcher = msg.member.voiceChannel.connection.dispatcher;
 						dispatcher.end('Skipped');
 						finish(dispatcher);
 					}
@@ -285,9 +279,11 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'settings',
-				usage: 'Parent command for music settings.',
+				usage: '.music settings or .music settings <child command>',
+				description: 'Parent command for music settings.',
+				permission: 'nomarch.music.settings',
 				execute: (msg, args) => {
-					var embed = new Discord.RichEmbed();
+					let embed = new Discord.RichEmbed();
 					embed.setTitle('Music Settings');
 					embed.addField('Bot Command Channel', config.channel);
 					msg.channel.send(embed);
@@ -295,7 +291,9 @@ exports.init = (client, app) => {
 				children: [
 					{
 						name: 'channel',
-						usage: 'Set the channel music commands can be invoked in.',
+						usage: '.music settings channel <channel name>',
+						permission: 'nomarch.music.settings.channel',
+						description: 'Set the channel music commands can be invoked in.',
 						arguments: 1,
 						execute: (msg, args) => {
 							if (args[0] === undefined) {
@@ -321,14 +319,14 @@ exports.init = (client, app) => {
 		children: [
 			{
 				name: 'queue',
-				usage: 'music queue [<command>]',
+				usage: '.music queue [<command>]',
 				execute: args => {
 					if (args.length === 0) {
-						var message = 'Queue:\n';
+						let message = 'Queue:\n';
 						
 						if (info.queue !== undefined) {
-							for (var i = 0; i < info.queue.length; i++) {
-								var entry = info.queue[i];
+							for (let i = 0; i < info.queue.length; i++) {
+								let entry = info.queue[i];
 								message = message + consoleSongEntry.replace(entry.title, entry.ytChannel, entry.addedBy, entry.duration);
 							}
 						}
@@ -344,3 +342,10 @@ exports.init = (client, app) => {
 		]
 	})
 };
+
+function save() {
+	setTimeout(async () => {
+		await fs.writeFile('./modules/music-player/config.json', JSON.stringify(data));
+		config = require('./config');
+	}, 150);
+}

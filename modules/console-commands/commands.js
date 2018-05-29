@@ -36,8 +36,8 @@ function onCommand(args, cmd) {
 		}
 		
 		if (cmd.hasOwnProperty('children')) {
-			for (var j = 0; j < cmd.children.length; j++) {
-				var child = cmd.children[j];
+			for (let j = 0; j < cmd.children.length; j++) {
+				let child = cmd.children[j];
 				
 				if (args[0] !== child.name) {
 					continue;
@@ -55,7 +55,7 @@ function onCommand(args, cmd) {
 	}
 	
 	if (args.length < cmd.arguments) {
-		console.error('Not enough arguments, usage: ' + cmd.usage);
+		console.error(`Not enough arguments, usage: ${cmd.usage}`);
 		return;
 	}
 	
@@ -63,7 +63,7 @@ function onCommand(args, cmd) {
 }
 
 exports.init = (client, app) => {
-	var rl = readLine.createInterface({
+	let rl = readLine.createInterface({
 		input: process.stdin,
 		output: process.stdout
 	});
@@ -78,10 +78,10 @@ exports.init = (client, app) => {
 			return;
 		}
 		
-		var args = input.split(' ');
+		let args = input.split(' ');
 		
-		for (var i = 0; i < commands.length; i++) {
-			var cmd = commands[i];
+		for (let i = 0; i < commands.length; i++) {
+			let cmd = commands[i];
 			
 			if (args[0] !== cmd.name) {
 				continue;
@@ -103,14 +103,14 @@ exports.init = (client, app) => {
  * @param cmd - the console command to add.
  */
 exports.addCommand = cmd => {
-	for (var i = 0; i < commands.length; i++) {
-		var command = commands[i];
+	for (let i = 0; i < commands.length; i++) {
+		let command = commands[i];
 		
 		if (command.name !== cmd.name) {
 			continue;
 		}
 		
-		console.error('Console command ' + command.name + ' is already in the console command map.');
+		console.error(`Console command ${command.name} is already in the console command map.`);
 		return;
 	}
 	

@@ -31,7 +31,7 @@ exports.init = (client, app) => {
 		children: [
 			{
 				name: 'info',
-				usage: '.pem info <role name| user name>',
+				usage: '.pem info <role name|username#discriminator>',
 				arguments: 1,
 				description: 'View all the permission manager information for that role.',
 				execute: (msg, args) => {
@@ -43,7 +43,7 @@ exports.init = (client, app) => {
 						var user = discordClient.guilds.array()[0].members.find(u => u.name === argName[0] && u.user.discriminator === argName[1]);
 						
 						if (user === undefined) {
-							msg.channel.send('Could not find ' + args[0] + ' in this guild.');
+							msg.channel.send(`Could not find ${args[0]} in this guild.`);
 							return;
 						}
 						
@@ -53,12 +53,12 @@ exports.init = (client, app) => {
 						var role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined) {
-							msg.channel.send('Could not find role ' + args[0] + ' in this guild.');
+							msg.channel.send(`Could not find role ${args[0]} in this guild.`);
 							return;
 						}
 						
 						if (!permissionMap.roles.hasOwnProperty(role.id)) {
-							msg.channel.send('Could not find role ' + role.name + ' in the permissions map.');
+							msg.channel.send(`Could not find role ${role.name} in the permissions map.`);
 							return;
 						} 
 						
@@ -67,11 +67,11 @@ exports.init = (client, app) => {
 					}
  				
 					
-					var embed = new Discord.RichEmbed();
-					embed.setTitle('Permissions for role ' + name + '.');
+					let embed = new Discord.RichEmbed();
+					embed.setTitle(`Permissions for role ${name}.`);
 					
-					for (var i = 0; i < permissions.length; i++) {
-						var permission = permissions[i];
+					for (let i = 0; i < permissions.length; i++) {
+						let permission = permissions[i];
 						embed.addField(i, permission);
 					}
 					
@@ -80,86 +80,86 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'add',
-				usage: '.pem add <role name|user name#discriminator> <permission node>',
+				usage: '.pem add <role name|username#discriminator> <permission node>',
 				arguments: 2,
 				description: 'Add a permission to a role or user.',
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
-						var role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
+						let role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined || role === null) {
-							msg.channel.send('Role ' + args[0] + ' is not an actual role on this guild.');
+							msg.channel.send(`Role ${args[0]} is not an actual role on this guild.`);
 							return;
 						}
 	
 						if (permissionMap.roles.hasOwnProperty(role.id) && permissionMap.roles[role.id].hasOwnProperty(args[1])) {
-							msg.channel.send('Role already has the permission node ' + args[1] + '.');
+							msg.channel.send(`Role already has the permission node ${args[1]}.`);
 							return;
 						}
 						
 						exports.addRolePermission(role.id, args[1]);
-						msg.channel.send('Added permission node ' + args[1] + ' to role ' + args[0] + '.');
+						msg.channel.send(`Added permission node ${args[1]} to role ${args[0]}.`);
 					} else {
-						var name = args[0].split('#');
-						var user = discordClient.guilds.array()[0].members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
+						let name = args[0].split('#');
+						let user = discordClient.guilds.array()[0].members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
 						
 						if (user === undefined) {
-							msg.channel.send('User ' + args[0] + ' was not found on this guild.');
+							msg.channel.send(`User ${args[0]} was not found on this guild.`);
 							return;
 						}
 						
 						if (permissionMap.users.hasOwnProperty(user.id) && permissionMap.users[user.id].hasOwnProperty(args[1])) {
-							msg.channel.send('User ' + args[0] + ' already has the permission node ' + args[0] + '.');
+							msg.channel.send(`User ${args[0]} already has the permission node ${args[0]}`);
 							return;
 						}
 						
 						exports.addUserPermission(user.id, args[1]);
-						msg.channel.send('Add permission node ' + args[1] + ' to user ' + args[0] + '.')
+						msg.channel.send(`Add permission node ${args[1]} to user ${args[0]}`)
 					}
 				}
 			},
 			{
 				name: 'remove',
-				usage: '.pem remove <role name|user name#discriminator> <permission name>',
+				usage: '.pem remove <role name|username#discriminator> <permission name>',
 				arguments: 2,
 				description: 'Remove a permission from a role or user.',
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
-						var role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
+						let role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined) {
-							msg.channel.send('Role ' + args[0] + ' is not an actual role on this guild.');
+							msg.channel.send(`Role ${args[0]} is not an actual role on this guild.`);
 							return;
 						}
 						
 						if (!permissionMap.roles.hasOwnProperty(role.id)) {
-							msg.channel.send('Role ' + role.name + ' is not in the command map.');
+							msg.channel.send(`Role ${role.name} is not in the command map.`);
 							return;
 						}
 						
 						if (permissionMap.roles[role.id].hasOwnProperty(args[1])) {
-							msg.channel.send('Role does not have the permission node ' + args[1] + '.');
+							msg.channel.send(`Role does not have the permission node ${args[1]}.`);
 							return;
 						}
 						
 						exports.removeRolePermission(role.id, args[1]);
-						msg.channel.send('Removed permission node ' + args[1] + ' to role ' + args[0] + '.');
+						msg.channel.send(`Removed permission node ${args[1]} to role ${args[0]}.`);
 					} else {
 						var name = args[0].split('#');
 						var user = discordClient.guilds.array()[0].members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
 						
 						if (user === undefined) {
-							msg.channel.send('User ' + args[0] + ' was not found on this guild.');
+							msg.channel.send(`User ${args[0]} was not found on this guild.`);
 							return;
 						}
 						
 						if (permissionMap.users[user.id].hasOwnProperty(args[1])) {
-							msg.channel.send('User ' + args[0] + ' does not have the permission node ' + args[0] + '.');
+							msg.channel.send(`User ${args[0]} does not have the permission node ${args[0]}.`);
 							return;
 						}
 						
 						exports.removeUserPermission(user.id, args[1]);
-						msg.channel.send('Removed permission node ' + args[1] + ' to user ' + args[0] + '.')
+						msg.channel.send(`Removed permission node ${args[1]} to user ${args[0]}.`)
 					}
 				}
 			}
@@ -179,26 +179,26 @@ exports.init = (client, app) => {
 				arguments: 1,
 				execute: args => {
 					if (args[0].match(discordUsernameRegex)) {
-						var nameArgs = args[0].split('#');
-						var member = client.guilds.array()[0].members.find(u => u.name === nameArgs[0] && u.user.discriminator === nameArgs[1]);
+						let nameArgs = args[0].split('#');
+						let member = client.guilds.array()[0].members.find(u => u.name === nameArgs[0] && u.user.discriminator === nameArgs[1]);
 						
 						if (user === undefined || user === null) {
-							console.log('Could not find member ' + args[0] + '.');
+							console.log(`Could not find member ${args[0]}.`);
 							return;
 						}
 						
 						if (!permissionMap.users.hasOwnProperty(member.id)) {
-							console.log('Could not find member ' + member.name + ' in the permission map.');
+							console.log(`Could not find member ${member.name} in the permission map.`);
 							return;
 						}
 						
-						console.log('Permissions for role ' + args[0] + ':');
+						console.log(`Permissions for role ${args[0]}.`);
 						permissionMap.users[member.id].forEach(p => '- ' + p);
 					}  else {
-						var role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
+						let role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined || role === null) {
-							console.log("Can't find role " + args[0] + ".");
+							console.log(`Can't find role ${args[0]}`);
 							return;
 						}
 						
@@ -207,8 +207,8 @@ exports.init = (client, app) => {
 							return;
 						}
 						
-						var permissions = permissionMap.roles[role.id];
-						console.log('Permissions for role ' + args[0] + ':');
+						let permissions = permissionMap.roles[role.id];
+						console.log(`Permissions for role ${args[0]}.`);
 						permissions.forEach(p => console.log('- ' + p))
 					}
 				}
@@ -220,28 +220,28 @@ exports.init = (client, app) => {
 				arguments: 2,
 				execute: args => {
 					if (args[0].match(discordUsernameRegex)) {
-						var nameArgs = args[0].split(' ');
-						var member = client.guilds.array()[0].members.find(m => m.name === nameArgs[0] && m.user.discriminator === nameArgs[1]);
+						let nameArgs = args[0].split(' ');
+						let member = client.guilds.array()[0].members.find(m => m.name === nameArgs[0] && m.user.discriminator === nameArgs[1]);
 						
 						if (member === undefined || member === null) {
-							console.log('Could not find member ' + args[0] + '.');
+							console.log(`Could not find member ${args[0]}.`);
 							return;
 						}
 						
 						if (!permissionMap.users.hasOwnProperty(member.id)) {
-							console.log('Could not find member ' + member.name + ' in permission map.');
+							console.log(`Could not find member ${member.name} in permission map.`);
 							return;
 						}
 						
 						if (permissionMap.users[member.id].hasOwnProperty(args[1])) {
-							console.log('Member ' + member.name + ' already has the permission ' + args[1]);
+							console.log(`Member ${member.name} already has the permission ${args[1]}`);
 							return;
 						}
 						
 						exports.addUserPermission(member.id, args[1]);
-						console.log('Added permission ' + args[1] + ' to member ' + args[0] + '.');
+						console.log(`Added permission ${args[1]} to member ${args[0]}.`);
 					} else {
-						var role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
+						let role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined || role === null) {
 							console.log("Couldn't find role " + args[0] + " in guild.");
@@ -254,12 +254,12 @@ exports.init = (client, app) => {
 						}
 						
 						if (permissionMap.roles[role.id].hasOwnProperty(args[1])) {
-							console.log('Role already has permission ' + args[1] + '.');
+							console.log(`Role already has permission ${args[1]}`);
 							return;
 						}
 						
 						exports.addRolePermission(role.id, args[1]);
-						console.log('Added permission ' + args[1] + ' to role ' + args[0] + '.');
+						console.log(`Added permission ${args[1]} to role ${args[0]}.`);
 					}
 				}
 			},
@@ -270,11 +270,11 @@ exports.init = (client, app) => {
 				arguments: 2,
 				execute: args => {
 					if (args[0].match(discordUsernameRegex)) {
-						var nameArgs = args[0].split('#');
-						var member = client.guilds.array()[0].members.find(m => m.name === nameArgs[0] && m.user.discriminator === nameArgs[1]);
+						let nameArgs = args[0].split('#');
+						let member = client.guilds.array()[0].members.find(m => m.name === nameArgs[0] && m.user.discriminator === nameArgs[1]);
 						
 						if (member === undefined || member === null) {
-							console.log("Couldn't find member " + args[0] + " in guild.");
+							console.log(`Couldn't find member ${args[0]} in guild.`);
 							return;
 						}
 						
@@ -284,17 +284,17 @@ exports.init = (client, app) => {
 						}
 						
 						if (!permissionMap.users[member.id].hasOwnProperty(member.id)) {
-							console.log("Member " + member.name + " does not have the permission " + args[1]);
+							console.log(`Member ${member.name} does not have the permission ${args[1]}.`);
 							return;
 						}
 						
 						exports.removeUserPermission(member.id, args[1]);
-						console.log('Removed permission ' + args[1] + ' from ' + args[0] + '.');
+						console.log(`Removed permission  ${args[1]} from ${args[0]}.`);
 					} else {
-						var role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
+						let role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined || role === null) {
-							console.log("Can't find role " + args[0] + " in guild.");
+							console.log(`Can't find role ${args[0]} in guild.`);
 							return;
 						}
 						
@@ -304,12 +304,12 @@ exports.init = (client, app) => {
 						}
 						
 						if (permissionMap.roles[role.id].hasOwnProperty(args[1])) {
-							console.log("Role " + args[0] + " doesn't have permission " + args[1] + ".");
+							console.log(`Role ${args[0]} doesn't have permission ${args[1]}.`);
 							return;
 						}
 						
 						exports.removeRolePermission(role.id, args[1]);
-						console.log('Remove permission ' + args[1] + ' from role ' + args[0] + '.');
+						console.log(`Remove permission ${args[1]} from role ${args[0]}`);
 					}
 				}
 			}
@@ -375,7 +375,7 @@ exports.addUserPermission = (userId, permission) => {
 	}
 	
 	if (permissionMap.users[userId].hasOwnProperty(permission)) {
-		console.error('Attempted to add permission ' + permission + ' to user ' + userId + ', but the permission was already assigned to this user.');
+		console.error(`Attempted to add permission ${permission} to user ${userId}, but the permission was already assigned to this user.`);
 		return;
 	}
 	
@@ -394,7 +394,7 @@ exports.addRolePermission = (roleId, permission) => {
 	}
 	
 	if (permissionMap.roles[roleId].hasOwnProperty(permission)) {
-		console.error('Attempted to add permission ' + permission + ' to role ' + role + ', but the permission was already assigned to this role.')
+		console.error(`Attempted to add permission ${permission} to role ${roleId}, but the permission was already assigned to this role.`);
 		return;
 	}
 	
@@ -416,12 +416,18 @@ exports.removeUserPermission = (userId, permission) => {
 		return;
 	}
 	
-	for (var i = 0; i < permissionMap.users[userId].length; i++) {
-		var perm = permissionMap.users[userId][i];
+	for (let i = 0; i < permissionMap.users[userId].length; i++) {
+		let perm = permissionMap.users[userId][i];
 		
 		if (permission === perm) {
-			delete permissionMap.users[userId][i];
+			const index = Math.floor(permissionMap.users[userId] / i);
+			permissionMap.users[userId].splice(index, 1);
+			
+			if (permissionMap.users[userId].length === 0) {
+				delete permissionMap[userId];
+			}
 			save();
+			
 			return;
 		}
 	}
@@ -438,18 +444,15 @@ exports.removeRolePermission = (roleId, permission) => {
 		return;
 	}
 	
-	for (var i = 0; i < permissionMap.roles[roleId].length; i++) {
-		var perm = permissionMap.roles[roleId][i];
-		
-		console.log('Iterating permission: ' + perm);
+	for (let i = 0; i < permissionMap.roles[roleId].length; i++) {
+		let perm = permissionMap.roles[roleId][i];
 		
 		if (permission === perm) {
-			console.log('Matched permission.');
+			const index = Math.floor(permissionMap.roles[roleId] / i);
+			permissionMap.roles[roleId].splice(index, 1);
 			
-			if (permissionMap.roles[roleId].length <= 1 || permissionMap.roles[roleId] === null) {
+			if (permissionMap.roles[roleId].length === 0) {
 				delete permissionMap.roles[roleId];
-			} else {
-				delete permissionMap.roles[roleId][i];
 			}
 			
 			save();

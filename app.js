@@ -9,7 +9,7 @@ if (fs.existsSync('./modules/permission-manager/permissions.js')) {
 }
 
 client.on('ready', () => {
-	console.log('Logged in as ' + client.user.tag + '.');
+	console.log(`Logged in as ${client.user.tag}.`);
 });
 
 /**
@@ -36,21 +36,21 @@ commands = [
  * @param cmd - the root of the current iteration of the command tree.
  */
 function onCommand(msg, args, cmd) {
-	console.log('Command arguments: ' + args);
+	console.log(`Command Args: ${args}`);
 	
 	if (args[0].replace('.', '') !== cmd.name) {
-		console.log('Is not command: ' + cmd.name + '.');
+		console.log(`Is not command: ${cmd.name} .`);
 		return;
 	}
 	
 	if (permissionManager !== null && permissionManager != null && cmd.hasOwnProperty('permission')) {
 		if (!permissionManager.hasPermission(msg.author.id, cmd.permission)) {
-			msg.channel.send('You do not have permission ' + cmd.permission + ' to invoke command ' + cmd.usage + '.');
+			msg.channel.send(`You do not have permission  ${cmd.permission} to invoke command ${cmd.usage}.`);
 			return;
 		}
 	}
 	
-	console.log('Is the command: ' + cmd.name + '.');
+	console.log(`Is the command: ' ${cmd.name}.`);
 	
 	if (args.length > 1) {
 		if (args[0] !== undefined) {
@@ -73,7 +73,6 @@ function onCommand(msg, args, cmd) {
 					var child = cmd.children[i];
 					
 					if (args[1] !== child.name) {
-						console.log('Child command ' + cmd.name + ' ' + child.name + ' is not the command that was invoked.');
 						continue;
 					}
 					
@@ -98,8 +97,7 @@ function onCommand(msg, args, cmd) {
 		}
 	}
 	
-	console.log('Executing command ' + cmd.name + ' with args ' + args + '.');
-
+	console.log(`Executing command ${cmd.name} with args ${args}.`);
 	cmd.execute(msg, args);
 }
 
@@ -108,14 +106,14 @@ client.on('message', msg => {
 		return;
 	}
 	
-	console.log('Message received: ' + msg.content);
+	console.log(`Message received: ${msg.content}`);
 	
 	if (!msg.content.startsWith('.')) {
-		console.log('Message "' + msg.content + '" is not a command.');
+		console.log(`Message '${msg.content}' is not a command.`);
 		return;
 	}
 	
-	console.log('Attempting to execute command ' + msg.content);
+	console.log(`Attempting to execute command ${msg.content}`);
 	
 	var args = msg.content.split(' ');
 	
@@ -135,9 +133,9 @@ client.on('message', msg => {
  * @param cmd - command to add to the command map.
  */
 exports.addCommand = cmd => {
-  for (var i = 0; i < commands.length; i++) {
+  for (let i = 0; i < commands.length; i++) {
       if (commands[i].name === cmd.name) {
-          console.error('Could not add command ' + cmd.name + ' as it already exists in the command map.')
+          console.error(`Could not add command ${cmd.name} as it already exists in the command map.`);
           return;
       }
   }
@@ -148,32 +146,32 @@ exports.addCommand = cmd => {
 
 
 fs.readdir('./modules', async (error, list) => {
-    for (var i = 0; i < list.length; i++) {
-        var module = list[i];
-        var dirStat = await fs.lstatSync('./modules/' + module);
+    for (let i = 0; i < list.length; i++) {
+        let module = list[i];
+        let dirStat = await fs.lstatSync('./modules/' + module);
         
         if (!dirStat.isDirectory()) {
         	continue;
 		}
 		
-        var files = await fs.readdirSync('./modules/' + module);
+        let files = await fs.readdirSync('./modules/' + module);
 	
-		for (var j = 0; j < files.length; j++) {
-			var entry = files[j];
+		for (let j = 0; j < files.length; j++) {
+			let entry = files[j];
 		
 			if (entry.split('.')[1] !== 'js') {
 				console.log('File ' + entry + ' is not a module.');
 				continue;
 			}
 			
-			var jsModule = await require('./modules/' + module + '/' + entry);
+			let jsModule = await require('./modules/' + module + '/' + entry);
 		
 			if (typeof jsModule.init !== 'function') {
-				console.error('Module ' + module + '/' + entry + ' did not have the init function. Could not initiate this module.');
+				console.error(`Module ${module}/${entry} did not have the init function. Could not initiate this module.`);
 				continue;
 			}
 		
-			console.log('Initiated module ' + entry + '.');
+			console.log(`Initiated module ${entry}.`);
 			await jsModule.init(client, this);
 		}
     }

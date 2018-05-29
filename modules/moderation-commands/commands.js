@@ -157,8 +157,8 @@ exports.isBanned = userId => {
 	if (!data.hasOwnProperty(userId)) {
 		return false;
 	} else {
-		for (var i = 0 ; i < data[userId].c.length; i++) {
-			var entry = data[userId].current[i];
+		for (let i = 0 ; i < data[userId].c.length; i++) {
+			let entry = data[userId].current[i];
 			
 			if (entry.type !== 'TEMPBAN' || entry.type !== 'PERMBAN') {
 				continue;
@@ -172,11 +172,11 @@ exports.isBanned = userId => {
 };
 
 exports.isMuted = userId => {
-	if (data.hasOwnProperty(userId)) {
+	if (!data.hasOwnProperty(userId)) {
 		return false;
 	} else {
-		for (var i = 0; i < data[userId].current.length; i++) {
-			var entry = data[userId].current[i];
+		for (let i = 0; i < data[userId].current.length; i++) {
+			let entry = data[userId].current[i];
 			
 			if (entry.type !== 'PERMMUTE' || entry.type !== 'TEMPMUTE') {
 				continue;
