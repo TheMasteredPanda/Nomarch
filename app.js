@@ -1,11 +1,13 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const fs = require('fs');
+const util = require('util');
+
 var config = {
 	apiKey: null,
 	settings: {
 		cmdChannel: null,
-		cmdPrefix: null
+		cmdPrefix: "."
 	}
 };
 
@@ -15,19 +17,23 @@ if (fs.existsSync('./modules/permission-manager/permissions.js')) {
 	permissionManager = require('./modules/permission-manager/permissions');
 }
 
+exports.fExists = util.promisify(fs.exists);
+
 setTimeout(async () => {
-	let exists = await fs.exists('./config.json', err => {
-		if (err) throw err;
+	let exists = await exports.fExists('config.json', err => {
+		if (err) console.error(err);
 	});
 	
 	if (!exists) {
-		await fs.writeFile('./config.json', JSON.stringify(config), err => {
-			if (err) throw err;
+		console.log(`Doesn't exist.`);
+		await fs.writeFile('config.json', JSON.stringify(config), err => {
+			if (err) console.error(err);
 			config = require('./config');
 		})
+	} else {
+		config = require('./config');
 	}
-}, 150);
-
+}, 100);
 
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}.`);
@@ -59,14 +65,14 @@ commands = [
 function onCommand(msg, args, cmd) {
 	console.log(`Command Args: ${args}`);
 	
-	if (args[0].replace('.', '') !== cmd.name) {
+	if (args[0].replace(config.settings.cmdPrefix, '') !== cmd.name) {
 		console.log(`Is not command: ${cmd.name} .`);
 		return;
 	}
 	
 	if (permissionManager !== null && permissionManager != null && cmd.hasOwnProperty('permission')) {
 		if (!permissionManager.hasPermission(msg.author.id, cmd.permission)) {
-			msg.channel.send(`You do not have permission  ${cmd.permission} to invoke command ${cmd.usage}.`);
+			console.log(`${msg.user.name} does not have permission ${cmd.permission} to invoke command ${cmd.usage}.`);
 			return;
 		}
 	}
@@ -129,7 +135,7 @@ client.on('message', msg => {
 	
 	console.log(`Message received: ${msg.content}`);
 	
-	if (!msg.content.startsWith('.')) {
+	if (!msg.content.startsWith(config.settings.cmdPrefix)) {
 		console.log(`Message '${msg.content}' is not a command.`);
 		return;
 	}
@@ -141,7 +147,7 @@ client.on('message', msg => {
 	for (let i = 0; i < commands.length; i++) {
 	    let cmd = commands[i];
 	    
-	    if (args[0] !== '.' + cmd.name) {
+	    if (args[0] !== config.settings.cmdPrefix + cmd.name) {
 	        continue;
         }
         
@@ -200,7 +206,7 @@ fs.readdir('./modules', async (error, list) => {
 
 function save() {
 	setInterval(async () => {
-		await fs.writeFile('./config.json', config, err => {
+		await fs.writeFile('./config.json', JSON.stringify(config), err => {
 			if (err) throw err;
 			config = require('./config');
 		});
@@ -225,13 +231,17 @@ exports.setCommandPrefix = channel => {
 	save();
 };
 
+exports.getCommandPrefix = () => {
+	return config.settings.cmdPrefix;
+};
+
 /**
  * Check if the channel is the command channel.
  * @param channel - channel name.
  * @returns {boolean} if true, yes, else false.
  */
 exports.isCommandChannel = channel => {
-	return channel === config.settings.cmdChannel;
+	return channel.type === 'text' && channel.name === config.settings.cmdChannel;
 };
 
 setTimeout(async () => {

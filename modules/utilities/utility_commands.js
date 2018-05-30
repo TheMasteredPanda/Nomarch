@@ -10,25 +10,44 @@ exports.init = (client, app) => {
 			children: [
 				{
 					name: 'stats',
-					usage: '.bot stats',
+					usage: `${app.getCommandPrefix()}bot stats`,
 					description: 'View the important statistics of the bot.',
 					permission: 'nomarch.util.stats',
 					execute: (msg, args) => {
 						const embed = exports.embed();
 						embed.setColor('GREY');
 						const used = process.memoryUsage().heapUsed / 1024 / 1024;
-						embed.addField('Memory Used', `${(Math.round(used * 100) / 100)}MB`);
+						embed.addField('Memory Used', `${(Math.round(used * 100) / 100)}MB`, true);
 						embed.addField('Uptime (HH:MM:SS)', uptime(), true);
 						msg.channel.send(embed);
 					}
 				},
 				{
 					name: 'cmdprefix',
-					usage: '.bot cmdprefix <command prefix>',
+					usage: `${app.getCommandPrefix()}bot cmdprefix <command prefix>`,
 					description: 'Set the command prefix.',
 					permission: 'nomarch.util.cmdprefix',
+					arguments: 1,
 					execute: (msg, args) => {
-					
+						app.setCommandPrefix(args[0]);
+						exports.send(msg.channel, msg.author, `Set command prefix to ${args[0]}.`)
+					}
+				},
+				{
+					name: 'cmdchannel',
+					usage:`${app.getCommandPrefix()}bot cmdchannel <command prefix>`,
+					description: `Set the text channel for the bot commands to be listening and invoked upon.`,
+					arguments: 1,
+					execute: (msg, args) => {
+						let channel = client.guilds.array()[0].channels.find(c => c.name === args[0] && c.type === 'text');
+						
+						if (channel === null || channel === undefined) {
+							exports.sendError(msg.channel, msg.author, `Channel ${args[0]} was not found.`);
+							return;
+						}
+						
+						app.setCommandChannel(args[0]);
+						exports.send(msg.channel, msg.author, `Set bot channel to ${args[0]}.`);
 					}
 				}
 			]
@@ -69,7 +88,8 @@ exports.embed = () => {
 exports.sendError = (channel, member, message) => {
 	const embed = exports.embed();
 	embed.setColor('RED');
-	embed.addField('Error!', member);
+	embed.addField('Error!', message);
+	channel.send(embed);
 };
 
 /**
@@ -82,4 +102,5 @@ exports.send = (channel, member, message) => {
 	const embed = exports.embed();
 	embed.setColor('GREY');
 	embed.addField('Message', message);
+	channel.send(embed);
 };

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const Discord = require('discord.js');
 const consoleCommands = require('../console-commands/commands');
+const util = require('../utilities/utility_commands');
 
 /**
  * Permission Manager Module.
@@ -18,8 +19,8 @@ exports.init = (client, app) => {
 	discordClient = client;
 	
 	setTimeout(async () => {
-		let exists = await fs.exists('./modules/permission-manager/permissions.json', err => {
-			if (err) throw err;
+		let exists = await app.fExists('./modules/permission-manager/permissions.json', err => {
+			if (err) console.error(err);
 		});
 		
 		if (!exists) {
@@ -28,19 +29,20 @@ exports.init = (client, app) => {
 				console.log('Created permissions config.');
 				permissionMap = require('./permissions');
 			})
+		} else {
+			permissionMap = require('./permissions');
 		}
 	}, 150);
 	
-	
 	app.addCommand({
 		name: 'pem',
-		usage: '.pem <command>',
+		usage: `${app.getCommandPrefix()}pem <command>`,
 		description: 'Parent command to the permission manager.',
 		execute: null,
 		children: [
 			{
 				name: 'info',
-				usage: '.pem info <role name|username#discriminator>',
+				usage: `${app.getCommandPrefix()}pem info <role name|username#discriminator>`,
 				arguments: 1,
 				description: 'View all the permission manager information for that role.',
 				permission: 'nomarch.pem.info',
@@ -49,26 +51,26 @@ exports.init = (client, app) => {
 					let name = null;
 					
 					if (args[0].match(discordUsernameRegex)) {
-						var argName = args[0].split('#');
-						var user = discordClient.guilds.array()[0].members.find(u => u.name === argName[0] && u.user.discriminator === argName[1]);
+						let argName = args[0].split('#');
+						let user = client.guilds.array()[0].members.find(u => u.name === argName[0] && u.user.discriminator === argName[1]);
 						
 						if (user === undefined) {
-							msg.channel.send(`Could not find ${args[0]} in this guild.`);
+							util.sendError(msg.channel, msg.author, `Could not found ${args[0]} in this guild.`);
 							return;
 						}
 						
 						permissions = permissionMap.users[user.id];
 						name = user.name;
 					} else {
-						var role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
+						let role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined) {
-							msg.channel.send(`Could not find role ${args[0]} in this guild.`);
+							util.sendError(msg.channel, msg.author, `Could not find role ${args[0]} in this guild.`);
 							return;
 						}
 						
 						if (!permissionMap.roles.hasOwnProperty(role.id)) {
-							msg.channel.send(`Could not find role ${role.name} in the permissions map.`);
+							util.sendError(msg.channel, msg.author, `Could not find role ${role.name} in the permission map.`);
 							return;
 						} 
 						
@@ -77,7 +79,7 @@ exports.init = (client, app) => {
 					}
  				
 					
-					let embed = new Discord.RichEmbed();
+					let embed = util.embed();
 					embed.setTitle(`Permissions for role ${name}.`);
 					
 					for (let i = 0; i < permissions.length; i++) {
@@ -90,48 +92,48 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'add',
-				usage: '.pem add <role name|username#discriminator> <permission node>',
+				usage: `${app.getCommandPrefix()}pem add <role name|username#discriminator> <permission node>`,
 				arguments: 2,
 				description: 'Add a permission to a role or user.',
 				permission: 'nomarch.pem.add',
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
-						let role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
+						let role = client.guilds.array()[0].roles.find(r => r.name === args[0]);
 						
 						if (role === undefined || role === null) {
-							msg.channel.send(`Role ${args[0]} is not an actual role on this guild.`);
+							util.sendError(msg.channel, msg.author, `Role ${args[0]} is not an actual role on this guild.`);
 							return;
 						}
 	
 						if (permissionMap.roles.hasOwnProperty(role.id) && permissionMap.roles[role.id].hasOwnProperty(args[1])) {
-							msg.channel.send(`Role already has the permission node ${args[1]}.`);
+							util.sendError(msg.channel, msg.author, `Role already has the permission noe ${args[1]}`);
 							return;
 						}
 						
 						exports.addRolePermission(role.id, args[1]);
-						msg.channel.send(`Added permission node ${args[1]} to role ${args[0]}.`);
+						util.send(msg.channel, msg.author, `Added permission node ${args[1]} to role ${args[0]}.`);
 					} else {
 						let name = args[0].split('#');
-						let user = discordClient.guilds.array()[0].members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
+						let user = client.guilds.array()[0].members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
 						
 						if (user === undefined) {
-							msg.channel.send(`User ${args[0]} was not found on this guild.`);
+							util.sendError(msg.channel, msg.author, `User ${args[0]} was not found on this guild.`);
 							return;
 						}
 						
 						if (permissionMap.users.hasOwnProperty(user.id) && permissionMap.users[user.id].hasOwnProperty(args[1])) {
-							msg.channel.send(`User ${args[0]} already has the permission node ${args[0]}`);
+							util.sendError(msg.channel, msg.author, `User ${args[0]} already has the permission node ${args[0]}`);
 							return;
 						}
 						
 						exports.addUserPermission(user.id, args[1]);
-						msg.channel.send(`Add permission node ${args[1]} to user ${args[0]}`)
+						util.send(msg.channel, msg.author, `Add permission node ${args[1]} to user ${args[0]}`);
 					}
 				}
 			},
 			{
 				name: 'remove',
-				usage: '.pem remove <role name|username#discriminator> <permission name>',
+				usage: `${app.getCommandPrefix()}pem remove <role name|username#discriminator> <permission name>`,
 				arguments: 2,
 				description: 'Remove a permission from a role or user.',
 				permission: 'nomarch.pem.remove',
@@ -157,8 +159,8 @@ exports.init = (client, app) => {
 						exports.removeRolePermission(role.id, args[1]);
 						msg.channel.send(`Removed permission node ${args[1]} to role ${args[0]}.`);
 					} else {
-						var name = args[0].split('#');
-						var user = discordClient.guilds.array()[0].members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
+						let name = args[0].split('#');
+						let user = discordClient.guilds.array()[0].members.find(u => u.name === name[0] && u.user.discriminator === name[1]);
 						
 						if (user === undefined) {
 							msg.channel.send(`User ${args[0]} was not found on this guild.`);
@@ -180,7 +182,7 @@ exports.init = (client, app) => {
 	
 	consoleCommands.addCommand({
 		name: 'pem',
-		usage: 'pem <command>',
+		usage: `${app.getCommandPrefix()}pem <command>`,
 		description: 'Parent command for the command manager.',
 		execute: null,
 		children: [
@@ -277,7 +279,7 @@ exports.init = (client, app) => {
 			},
 			{
 				name: 'remove',
-				usage: 'pem remove <user name#descriminator| role name> <permission>',
+				usage: '${app.getCommandPrefix()}pem remove <user name#descriminator| role name> <permission>',
 				description: 'Remove a permission node from a user or role.',
 				arguments: 2,
 				execute: args => {

@@ -2,6 +2,7 @@ const ytdl = require('ytdl-core');
 const Discord = require('discord.js');
 const fs = require('fs');
 const consoleModule = require('../console-commands/commands');
+const util = require('../utilities/utility_commands');
 
 var info = {
 	playing: false,
@@ -9,16 +10,10 @@ var info = {
 	queue: []
 };
 
-var config = {
-	channel: null
-};
-
 var consoleSongEntry = 'Title: {0}\nUploaded By: {1}\nAdded By: {2}, Duration: {3}\n';
 
 function finish(dispatcher) {
 	info.queue.shift();
-
-	console.log(JSON.stringify(info));
 	info.playing = false;
 	if (info.queue.length === 0) {
 		info.queue = [];
@@ -40,7 +35,7 @@ function finish(dispatcher) {
 async function play(entry, settings, connection) {
 	if (!info.playing) {
 		if (entry === undefined) {
-			console.log('Music entry given was undefined.');
+			console.error('Music entry given was undefined.');
 			return;
 		}
 		
@@ -57,21 +52,6 @@ async function play(entry, settings, connection) {
 }
 
 exports.init = (client, app) => {
-	setTimeout(async () => {
-		let exists = await fs.exists('./modules/music-player/config.json', err => {
-			if (err) throw err;
-		});
-		
-		if (!exists) {
-			await fs.writeFile('./modules/music-player/config.json', err => {
-				if (err) throw err;
-				console.log('Created music config.');
-				config = require('./config');
-			})
-		}
-	}, 150);
-	
-	
 	app.addCommand({
 		name: 'music',
 		usage: 'Play a song in a channel.',
@@ -79,7 +59,7 @@ exports.init = (client, app) => {
 		children: [
 			{
 				name: 'queue',
-				usage: '.music queue <url or video id>.',
+				usage: `${app.getCommandPrefix()}music queue <url or video id>.`,
 				description: 'Queue music for the bot to play.',
 				permission: 'nomarch.music.queue',
 				execute: (msg, args) => {
@@ -88,41 +68,47 @@ exports.init = (client, app) => {
 							return;
 						}
 						
-						if (!info.channel) {
-							msg.channel.send('No queue has been formed for this guild.');
+						if (!app.isCommandChannel(msg.channel)) {
 							return;
 						}
 						
-						let embed = new Discord.RichEmbed();
+						if (!info.channel) {
+							util.sendError(msg.channel, msg.author, `I'm not in a voice channel.`);
+							return;
+						}
 						
 						if (info.queue.length === 0) {
-							msg.channel.send('No queue has been formed for this guild.');
+							util.sendError(msg.channel, msg.author, 'No queue formed for this guild.');
 							return;
 						}
+						
+						
+						let embed = util.embed();
 						
 						for (let i = 0; i < info.queue.length; i++) {
 							let entry = info.queue[i];
-							embed.addField('Song ' + i, `Title: ${entry.title}\nDuration: ${entry.duration}\nUploaded By: ${entry.ytChannel}\nAdded By: ${entry.addedBy}.`, true);
+							embed.addField('Song ' + i, `Title: ${entry.title}\nDuration: ${entry.duration}\nUploaded By: ${entry.ytChannel}\nAdded By: ${entry.addedBy}.`);
 						}
 						
 						msg.channel.send(embed);
 						return;
 					}
 					
-					if (!msg.channel) {
-						msg.channel.send('I must be joined to a channel before queuing a song.');
+					if (!info.channel) {
+						util.sendError(msg.channel, msg.author, `I must be joined to a channel being queueing a song.`);
 					} else {
 						if (!msg.guild) {
+							util.sendError(msg.channel, msg.author, 'This command can only be invoked in a guild.');
 							return;
 						}
 						
 						if (!msg.member.voiceChannel) {
-							msg.channel.send('You must be in the voice channel when adding new songs.');
+							util.sendError(msg.channel, msg.author, 'You must be in the voice channel when adding new songs.');
 							return;
 						}
 						
 						if (info.channel !== msg.member.voiceChannel.name) {
-							msg.channel.send(`You're not in the same voice channel as the bot, ${msg.author.tag}.`);
+							util.sendError(msg.channel, msg.author, `You're not in the same voice channel as the bot, ${msg.author.tag}.`);
 							return;
 						}
 						
@@ -134,8 +120,6 @@ exports.init = (client, app) => {
 							addedBy: msg.author.tag
 						};
 						
-						console.log('Adding your song, ' + msg.author.tag + '.');
-						
 						ytdl.getInfo(args[0], async (err, ytInfo) => {
 							if (err) {
 								console.error(err.message);
@@ -143,141 +127,173 @@ exports.init = (client, app) => {
 								return;
 							}
 							
-							console.log(JSON.stringify(ytInfo));
-							
 							songEntry.title = ytInfo.title;
 							songEntry.ytChannel = ytInfo.author.user;
 							songEntry.duration = ytInfo.length_seconds;
 							await play(songEntry, { seek: 0, volume: 1}, msg.member.voiceChannel.connection);
 							info.queue.push(songEntry);
-							msg.channel.send(`Added your song, ${msg.author.tag}.`);
+							util.send(msg.channel, msg.author, `Added your song, ${msg.author.tag}.`);
 						});
 					}
 				}
 			},
 			{
 				name: 'join',
-				usage: '.music join',
+				usage: `${app.getCommandPrefix()}music join`,
 				description: "Command the bot to join the channel you're in.",
 				permission: 'nomarch.music.join',
 				execute: (msg, args) => {
-					if (msg.member.voiceChannel.name !== config.channel) {
+					if (!msg.guild) {
+						util.sendError(msg.channel, msg.author, 'This command can only be invoked in a guild.');
+						return;
+					}
+					
+					if (!app.isCommandChannel(msg.channel)) {
 						return;
 					}
 					
 					if (!msg.member.voiceChannel) {
-						msg.channel.send('You must be in a voice channel for me to join.');
+						util.sendError(msg.channel, msg.author,'You must be in a voice channel for me to join.');
 						return;
 					}
 					
 					if (info.channel != null && info.channel !== msg.member.voiceChannel.name) {
-						msg.channel.send('I am not serving this channel as I am already serving tunes in another channel.');
+						util.sendError(msg.channel, msg.author, 'I am not serving this channel as I am already serving tunes in another channel.');
 						return;
 					}
 					
 					if (info.channel != null && info.channel === msg.member.voiceChannel.name) {
-						msg.channel.send(`Already joined channel ${info.channel}.`);
+						util.sendError(msg.channel, msg.author, `Already joined channel ${info.channel}.`);
 						return;
 					}
 					
-					msg.member.voiceChannel.join().then(c => msg.channel.send('Joined voice channel.'));
+					msg.member.voiceChannel.join().then(c => util.send(msg.channel, msg.author, 'Joined voice channel.'));
 					info.channel = msg.member.voiceChannel.name;
 				}
 			},
 			{
 				name: 'leave',
-				usage: '.mod leave',
+				usage: `${app.getCommandPrefix()}mod leave`,
 				description: 'Command the bot to leave the channel is it in.',
 				permission: 'nomarch.music.leave',
 				execute: (msg, args) => {
-					if (msg.member.voiceChannel.name !== config.channel) {
+					if (!msg.guild) {
+						util.sendError(msg.channel, msg.author, 'This command can only be invoked in a guild.');
+						return;
+					}
+					
+					if (!app.isCommandChannel(msg.channel)) {
 						return;
 					}
 					
 					if (!info.channel) {
-						msg.channel.send('I am not serving tunes to anyone at this moment in time.');
+						util.sendError(msg.channel, msg.author, 'I am not serving tunes to anyone at this moment in time.');
 						return;
+					}
+					
+					if (msg.member.voiceChannel === null || msg.member.voiceChannel.name !== info.channel) {
+						util.sendError(msg.channel, msg.author, `You're not in the same voice channel as the bot.`);
 					}
 					
 					delete info.channel;
 					msg.member.voiceChannel.leave();
-					msg.channel.send('Left voice channel.');
+					util.send(msg.channel, msg.author, 'Left voice channel.');
 				}
 			},
 			{
 				name: 'pause',
-				usage: '.music pause',
+				usage: `${app.getCommandPrefix()}music pause`,
 				description: 'Pause the music the bot is serving.',
 				permission: 'nomarch.music.pause',
 				execute: (msg, args) => {
-					if (msg.member.voiceChannel.name !== config.channel) {
+					if (!msg.guild) {
+						util.sendError(msg.channel, msg.author, 'This command can only be invoked in a guild.');
+						return;
+					}
+					
+					if (!app.isCommandChannel(msg.channel)) {
 						return;
 					}
 					
 					if (!info.channel) {
-						msg.channel.send('I am not serving tunes to any channel in this guild at the moment.');
+						util.sendError(msg.channel, msg.author, 'I am not serving tunes to any channel in this guild at the moment.');
 					} else {
 						if (info.channel && msg.member.voiceChannel.name !== info.channel) {
-							msg.channel.send('You must be in the same voice channel in order to pause the music.');
+							util.sendError(msg.channel, msg.author, 'You must be in the same voice channel in order to pause the music.');
 							return;
 						}
 						
 						const dispatcher = msg.member.voiceChannel.connection.dispatcher;
 						
 						if (dispatcher.paused) {
-							msg.channel.send('Music is already paused.');
+							util.sendError(msg.channel, msg.author, 'The music is already paused.');
 							return;
 						}
 						
 						dispatcher.pause();
-						msg.channel.send('Paused the music.')
+						util.send(msg.channel, msg.author, 'The music is paused.');
  					}
 				}
 			},
 			{
 				name: 'unpause',
-				usage: '.music unpause',
+				usage: `${app.getCommandPrefix()}music unpause`,
 				permission: 'nomarch.music.unpause',
 				description: 'Stop pausing the music the bot is serving.',
 				execute: (msg, args) => {
-					if (msg.member.voiceChannel.name !== config.channel) {
+					if (!msg.guild) {
+						util.sendError(msg.channel, msg.author, 'This command can only be invoked in a guild.');
+						return;
+					}
+					
+					if (!app.isCommandChannel(msg.channel)) {
 						return;
 					}
 					
 					if (!info.channel) {
-						msg.channel.send('I am not serving tunes to any channel in this guild at the moment,');
+						util.send(msg.channel, msg.author, 'I am not serving tunes to any channel in this guild at the moment.');
 					} else {
 						if (msg.member.voiceChannel.name !== info.channel) {
-							msg.channel.send('You must be in the same voice channel in order to pause the music.');
+							util.sendError(msg.channel, msg.author, 'You must be in the same voice channel in order to pause the music.');
 							return;
 						}
 						
 						const dispatcher = msg.member.voiceChannel.connection.dispatcher;
 						
 						if (!dispatcher.paused) {
-							msg.channel.send('Music is not paused.');
+							util.sendError(msg.channel, msg.author, 'The music is not paused.');
 							return;
 						}
 						
 						
 						dispatcher.resume();
-						msg.channel.send('Stopped pausing the music.')
+						util.sendError(msg.channel, msg.author, 'Resuming..');
 					}
 				}
 			},
 			{
 				name: 'skip',
-				usage: '.music skip',
+				usage: `${app.getCommandPrefix()}music skip`,
 				description: 'Skip the current song.',
 				permission: 'nomarch.music.skip',
 				execute: (msg, args) => {
-					if (msg.member.voiceChannel.name !== config.channel) {
+					if (!msg.guild) {
+						util.sendError(msg.channel, msg.author, 'This command can only be invoked in a guild.');
+						return;
+					}
+					
+					if (!app.isCommandChannel(msg.channel)) {
 						return;
 					}
 					
 					if (!info.channel) {
-						msg.channel.send('I am not serving tunes to any channel in this guild at the moment.');
+						util.sendError(msg.channel, msg.author, 'I am not serving tunes to any channel in this guild at the moment.');
 					} else {
+						if (msg.member.voiceChannel.name !== info.channel) {
+							util.sendError(msg.channel, msg.author, 'You must be in the same voice channel in order to pause the music.');
+							return;
+						}
+						
 						if (!info.playing) {
 							msg.channel.send("I'm not playing any music at the moment.");
 							return;
@@ -289,38 +305,6 @@ exports.init = (client, app) => {
 						finish(dispatcher);
 					}
 				}
-			},
-			{
-				name: 'settings',
-				usage: '.music settings or .music settings <child command>',
-				description: 'Parent command for music settings.',
-				permission: 'nomarch.music.settings',
-				execute: (msg, args) => {
-					let embed = new Discord.RichEmbed();
-					embed.setTitle('Music Settings');
-					embed.addField('Bot Command Channel', config.channel);
-					msg.channel.send(embed);
-				},
-				children: [
-					{
-						name: 'channel',
-						usage: '.music settings channel <channel name>',
-						permission: 'nomarch.music.settings.channel',
-						description: 'Set the channel music commands can be invoked in.',
-						arguments: 1,
-						execute: (msg, args) => {
-							if (args[0] === undefined) {
-								msg.channel.send("Couldn't set the bot channel.");
-								console.log("Couldn't set the bot channel.");
-								return;
-							}
-							
-							config.channel = args[0];
-							save();
-							msg.channel.send('Changed the bot command channel for music commands.');
-						}
-					}
-				]
 			}
 		]
 	});
@@ -356,13 +340,3 @@ exports.init = (client, app) => {
 		]
 	})
 };
-
-function save() {
-	setTimeout(async () => {
-		await fs.writeFile('./modules/music-player/config.json', JSON.stringify(config), err => {
-			if (err) throw err;
-			console.log('Saved music config file.');
-			config = require('./config');
-		});
-	}, 150);
-}

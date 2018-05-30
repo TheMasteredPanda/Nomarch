@@ -1,4 +1,5 @@
 const fs = require('fs');
+const util = require('../utilities/utility_commands');
 
 let data = {
 	userId: {
@@ -37,18 +38,18 @@ let data = {
 
 const discordUsernameRegex = /^[A-Za-z.\s]+#\d\d\d\d/g;
 let discordClient;
-
+i
 exports.init = (client, app) => {
 	discordClient = client;
 	
-	setInterval(async () => {
-		 let exists = fs.exists('./modules/moderation-commands/punishments.json', err => {
-		 	if (err) throw err;
+	setTimeout(async () => {
+		 let exists = await app.fExists('./modules/moderation-commands/punishments.json', err => {
+		 	if (err) console.error(err);
 		 });
 		
 		if (!exists) {
-		 	await fs.writeFile('./modules/moderation-commands/punishments.json', err => {
-		 		if (err) throw err;
+		 	await fs.writeFile('./modules/moderation-commands/punishments.json', JSON.stringify(data), err => {
+		 		if (err) console.error(err);
 		 		console.log('Created punishments file.');
 		 		data = require('./punishments');
 		 	});
@@ -57,18 +58,18 @@ exports.init = (client, app) => {
 	
 	app.addCommand({
 		name: 'mod',
-		usage: '.mod <command>',
+		usage: `${app.getCommandPrefix()}mod <command>`,
 		description: 'Parent command of the moderation system.',
 		execute: null,
 		children: [
 			{
 				name: 'ban',
-				usage: '.mod ban <username#discriminator> <reason> <duration> or .mod ban <username#discriminator> <reason>',
+				usage: `${app.getCommandPrefix()}mod ban <username#discriminator> <reason> <duration> or ${app.getCommandPrefix()}mod ban <username#discriminator> <reason>`,
 				description: 'Ban a member temporarily or permanently.',
 				arguments: 3,
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
-						msg.channel.send(`Couldn't find member ${args[0]}`);
+						util.sendError(msg.channel, msg.author, `Couldn't find member ${args[0]}`);
 						return;
 					}
 					
@@ -76,57 +77,58 @@ exports.init = (client, app) => {
 					let member = client.guilds.array()[0].members.find(m => m.name === nameArgs[0] && m.user.discriminator === nameArgs[1]);
 					
 					if (member === null || member === undefined) {
-						msg.channel.send(`Could't find member ${args[0]}`);
+						util.sendError(msg.channel, msg.author, `Could't find member ${args[0]}`);
 						return;
 					}
 					
 					if (exports.isBanned(member.user.id)) {
-						msg.channel.send(`${member.user.username} is already banned.`);
+						util.sendError(msg.channel, msg.author, `${member.user.username} is already banned.`);
 						return;
 					}
 					
 					const permanent = args.length === 3;
 					
 					exports.ban(member.id, permanent, args[1], msg.author.id, permanent ? -0 : args[2]);
-					msg.channel.send(`Banned member ${member.user.username} ${permanent ? `` : ` for ${duration / 60} minutes`}, because ${args[0]}.`);
+					util.send(msg.channel, msg.author, `Banned member ${member.user.username} ${permanent ? `` : ` for ${duration / 60} minutes`}, because ${args[0]}.`);
 				}
 			},
 			{
 				name: 'mute',
-				usage: '.mod mute <username#discriminator> <duration> <reason> or .mod mute <username#discriminator> <reason>',
+				usage: `${app.getCommandPrefix()}mod mute <username#discriminator> <duration> <reason> or ${app.getCommandPrefix()}mod mute <username#discriminator> <reason>`,
 				description: 'Mute a member temporarily or permanently.',
 				arguments: 2,
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
-						msg.channel.send(`Couldn't find member ${args[0]}.`);
+						util.sendError(msg.channel, msg.author, `Couldn't find member ${args[0]}.`);
 						return;
 					}
 					
 					let nameArgs = args[0].split('#');
-					let member = client.guild.array()[0].members.find(m => m.name === nameArgs && m.user.discriminator === nameArgs[1]);
+					let member = client.guild.array()[0].members.find(m => m.user.username === nameArgs && m.user.discriminator === nameArgs[1]);
 					
 					if (member === null || member === undefined) {
-						msg.channel.send(`Couldn't find member ${args[0]}.`);
+						util.sendError(`Couldn't find member ${args[0]}.`);
 						return;
 					}
 					
 					if (exports.isMuted(member.id)) {
-						msg.channel.send(`Member ${member.user.username} is already muted.`);
+						util.sendError(msg.channel, msg.author, `Member ${member.user.username} is already muted.`);
 						return;
 					}
 					
 					const permanent = args.length === 3;
 					exports.mute(member.id, permanent, permanent ? args[2] : args[1], msg.author.id, permanent ? -0 : args[1]);
+					util.send(msg.channel, msg.author, `Member ${member.user.username} ${permanent ? `muted` : `temporarily muted for ${args[1]}`} because ${permanent ? args[2] : args[1]}.`)
 				}
 			},
 			{
 				name: 'info',
-				usage: '.mod info <username#discriminator>',
+				usage: `${app.getCommandPrefix()}mod info <username#discriminator>`,
 				description: 'To view a detailed description of a players punishment record.',
 				arguments: 1,
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
-						msg.channel.send(`Can't find user ${args[0]}.`);
+						util.send(msg.channel, msg.author, `Can't find user ${args[0]}.`);
 						return;
 					}
 					
@@ -134,7 +136,24 @@ exports.init = (client, app) => {
 					let member = discordClient.guilds.array()[0].members.find(m => m.user.username === nameArgs[0] && m.user.discriminator === nameArgs[1]);
 					
 					if (member === null && member === undefined) {
-						msg.channel.send('') //TODO
+						util.send(msg.channel, msg.author, `Can't find member ${args[0]} in guild.`);
+						return;
+					}
+					
+					if (!data.history.hasOwnProperty(member.user.id)) {
+						util.send(msg.channel, msg.author, `This member doesn't have a punishment history.`);
+					} else {
+						let history = data.history[member.user.id];
+						const embed = util.embed();
+						
+						for (let i = 0; i < history.length; i++) {
+							let entry = history[i];
+							embed.addField(i, `Type: ${entry.type}\nDuration ${Date.parse(entry.duration)}\nExecutor: ${client.guilds.array()[0].members.find(m => m.user.id === entry.executor).user.name}
+							\nReason: ${entry.reason}\nEnded Prematurely: ${entry.hasOwnProperty('extra') ? entry.extra.ended_prematurely : false}\nEnded By: ${entry.hasOwnProperty('extra') ?
+								client.guilds.array()[0].members.find(m => m.user.id === entry.extra.ended_by).user.name : null}\nEnded Because: ${entry.hasOwnProperty('extra') ? entry.extra.reason : null}\nStarted: ${Date.parse(entry.date.start)}\nFinished: ${Date.parse(entry.date.finish)}.`);
+						}
+						
+						msg.channel.send(embed);
 					}
 				}
 			}
