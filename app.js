@@ -1,12 +1,33 @@
 const Discord = require('discord.js');
 const client = new Discord.Client();
 const fs = require('fs');
-const config = require('./config.json');
+var config = {
+	apiKey: null,
+	settings: {
+		cmdChannel: null,
+		cmdPrefix: null
+	}
+};
+
 var permissionManager;
 
 if (fs.existsSync('./modules/permission-manager/permissions.js')) {
 	permissionManager = require('./modules/permission-manager/permissions');
 }
+
+setTimeout(async () => {
+	let exists = await fs.exists('./config.json', err => {
+		if (err) throw err;
+	});
+	
+	if (!exists) {
+		await fs.writeFile('./config.json', JSON.stringify(config), err => {
+			if (err) throw err;
+			config = require('./config');
+		})
+	}
+}, 150);
+
 
 client.on('ready', () => {
 	console.log(`Logged in as ${client.user.tag}.`);
@@ -69,8 +90,8 @@ function onCommand(msg, args, cmd) {
 			}
 			
 			if (cmd.hasOwnProperty('children')) {
-				for (var i = 0; i < cmd.children.length; i++) {
-					var child = cmd.children[i];
+				for (let i = 0; i < cmd.children.length; i++) {
+					let child = cmd.children[i];
 					
 					if (args[1] !== child.name) {
 						continue;
@@ -115,10 +136,10 @@ client.on('message', msg => {
 	
 	console.log(`Attempting to execute command ${msg.content}`);
 	
-	var args = msg.content.split(' ');
+	let args = msg.content.split(' ');
 	
-	for (var i = 0; i < commands.length; i++) {
-	    var cmd = commands[i];
+	for (let i = 0; i < commands.length; i++) {
+	    let cmd = commands[i];
 	    
 	    if (args[0] !== '.' + cmd.name) {
 	        continue;
@@ -176,6 +197,42 @@ fs.readdir('./modules', async (error, list) => {
 		}
     }
 });
+
+function save() {
+	setInterval(async () => {
+		await fs.writeFile('./config.json', config, err => {
+			if (err) throw err;
+			config = require('./config');
+		});
+	});
+}
+
+/**
+ * Set the command channel, the channel the bot would listen to.
+ * @param channel - channel name.
+ */
+exports.setCommandChannel = channel => {
+	config.settings.cmdChannel = channel;
+	save();
+};
+
+/**
+ * Set the command prefix.
+ * @param channel - command prefix.
+ */
+exports.setCommandPrefix = channel => {
+	config.settings.cmdPrefix = channel;
+	save();
+};
+
+/**
+ * Check if the channel is the command channel.
+ * @param channel - channel name.
+ * @returns {boolean} if true, yes, else false.
+ */
+exports.isCommandChannel = channel => {
+	return channel === config.settings.cmdChannel;
+};
 
 setTimeout(async () => {
 	await client.login(config.apiKey)

@@ -9,12 +9,11 @@ var info = {
 	queue: []
 };
 
-var config = null;
-var consoleSongEntry = 'Title: {0}\nUploaded By: {1}\nAdded By: {2}, Duration: {3}\n';
-var data = {
+var config = {
 	channel: null
 };
 
+var consoleSongEntry = 'Title: {0}\nUploaded By: {1}\nAdded By: {2}, Duration: {3}\n';
 
 function finish(dispatcher) {
 	info.queue.shift();
@@ -58,7 +57,21 @@ async function play(entry, settings, connection) {
 }
 
 exports.init = (client, app) => {
-	save();
+	setTimeout(async () => {
+		let exists = await fs.exists('./modules/music-player/config.json', err => {
+			if (err) throw err;
+		});
+		
+		if (!exists) {
+			await fs.writeFile('./modules/music-player/config.json', err => {
+				if (err) throw err;
+				console.log('Created music config.');
+				config = require('./config');
+			})
+		}
+	}, 150);
+	
+	
 	app.addCommand({
 		name: 'music',
 		usage: 'Play a song in a channel.',
@@ -71,7 +84,7 @@ exports.init = (client, app) => {
 				permission: 'nomarch.music.queue',
 				execute: (msg, args) => {
 					if (args.length === 0) {
-						if (msg.channel.name !== config.channel) {
+						if (msg.member.voiceChannel.name !== config.channel) {
 							return;
 						}
 						
@@ -89,7 +102,7 @@ exports.init = (client, app) => {
 						
 						for (let i = 0; i < info.queue.length; i++) {
 							let entry = info.queue[i];
-							embed.addField('Song ' + i, `Title: ${entry.title}\nDuration: ${entry.duration}\nUploaded By: ${entry.ytChannel}\nAdded By: ${entry.addedBy}.`);
+							embed.addField('Song ' + i, `Title: ${entry.title}\nDuration: ${entry.duration}\nUploaded By: ${entry.ytChannel}\nAdded By: ${entry.addedBy}.`, true);
 						}
 						
 						msg.channel.send(embed);
@@ -148,7 +161,7 @@ exports.init = (client, app) => {
 				description: "Command the bot to join the channel you're in.",
 				permission: 'nomarch.music.join',
 				execute: (msg, args) => {
-					if (msg.channel.name !== config.channel) {
+					if (msg.member.voiceChannel.name !== config.channel) {
 						return;
 					}
 					
@@ -177,7 +190,7 @@ exports.init = (client, app) => {
 				description: 'Command the bot to leave the channel is it in.',
 				permission: 'nomarch.music.leave',
 				execute: (msg, args) => {
-					if (msg.channel.name !== config.channel) {
+					if (msg.member.voiceChannel.name !== config.channel) {
 						return;
 					}
 					
@@ -197,7 +210,7 @@ exports.init = (client, app) => {
 				description: 'Pause the music the bot is serving.',
 				permission: 'nomarch.music.pause',
 				execute: (msg, args) => {
-					if (msg.channel.name !== config.channel) {
+					if (msg.member.voiceChannel.name !== config.channel) {
 						return;
 					}
 					
@@ -227,7 +240,7 @@ exports.init = (client, app) => {
 				permission: 'nomarch.music.unpause',
 				description: 'Stop pausing the music the bot is serving.',
 				execute: (msg, args) => {
-					if (msg.channel.name !== config.channel) {
+					if (msg.member.voiceChannel.name !== config.channel) {
 						return;
 					}
 					
@@ -258,7 +271,7 @@ exports.init = (client, app) => {
 				description: 'Skip the current song.',
 				permission: 'nomarch.music.skip',
 				execute: (msg, args) => {
-					if (msg.channel.name !== config.channel) {
+					if (msg.member.voiceChannel.name !== config.channel) {
 						return;
 					}
 					
@@ -303,7 +316,8 @@ exports.init = (client, app) => {
 							}
 							
 							config.channel = args[0];
-							msg.channel.send('Changed the bot command channel.');
+							save();
+							msg.channel.send('Changed the bot command channel for music commands.');
 						}
 					}
 				]
@@ -345,7 +359,10 @@ exports.init = (client, app) => {
 
 function save() {
 	setTimeout(async () => {
-		await fs.writeFile('./modules/music-player/config.json', JSON.stringify(data));
-		config = require('./config');
+		await fs.writeFile('./modules/music-player/config.json', JSON.stringify(config), err => {
+			if (err) throw err;
+			console.log('Saved music config file.');
+			config = require('./config');
+		});
 	}, 150);
 }

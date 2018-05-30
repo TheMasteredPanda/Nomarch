@@ -6,22 +6,31 @@ const consoleCommands = require('../console-commands/commands');
  * Permission Manager Module.
  */
 
-let permissionMap = null;
+let permissionMap = {
+	roles: {},
+	users: {}
+};
+
 const discordUsernameRegex = /^[A-Za-z.\s]+#\d\d\d\d/g;
 let discordClient = null;
 
 exports.init = (client, app) => {
 	discordClient = client;
-	if (!fs.existsSync('./modules/permission-manager/permissions.json')) {
-		console.log('Does not exist.');
-		fs.writeFileSync('./modules/permission-manager/permissions.json', JSON.stringify({
-			roles: {},
-			users: {}
-		}));
-	}
 	
-	permissionMap = require('./permissions.json');
-	console.log(JSON.stringify(permissionMap));
+	setTimeout(async () => {
+		let exists = await fs.exists('./modules/permission-manager/permissions.json', err => {
+			if (err) throw err;
+		});
+		
+		if (!exists) {
+			await fs.writeFile('./modules/permission-manager/permissions.json', JSON.stringify(permissionMap), err => {
+				if (err) throw err;
+				console.log('Created permissions config.');
+				permissionMap = require('./permissions');
+			})
+		}
+	}, 150);
+	
 	
 	app.addCommand({
 		name: 'pem',
@@ -34,6 +43,7 @@ exports.init = (client, app) => {
 				usage: '.pem info <role name|username#discriminator>',
 				arguments: 1,
 				description: 'View all the permission manager information for that role.',
+				permission: 'nomarch.pem.info',
 				execute: (msg, args) => {
 					let permissions = [];
 					let name = null;
@@ -83,6 +93,7 @@ exports.init = (client, app) => {
 				usage: '.pem add <role name|username#discriminator> <permission node>',
 				arguments: 2,
 				description: 'Add a permission to a role or user.',
+				permission: 'nomarch.pem.add',
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
 						let role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
@@ -123,6 +134,7 @@ exports.init = (client, app) => {
 				usage: '.pem remove <role name|username#discriminator> <permission name>',
 				arguments: 2,
 				description: 'Remove a permission from a role or user.',
+				permission: 'nomarch.pem.remove',
 				execute: (msg, args) => {
 					if (!args[0].match(discordUsernameRegex)) {
 						let role = discordClient.guilds.array()[0].roles.find(r => r.name === args[0]);
@@ -321,11 +333,10 @@ exports.init = (client, app) => {
  * Save the permission map to the permission json file.
  */
 function save() {
-	console.log(JSON.stringify(permissionMap));
-	
 	setTimeout(async () => {
 		await fs.writeFile('./modules/permission-manager/permissions.json', JSON.stringify(permissionMap), err => {
-			if (err) console.error(err);
+			if (err) throw err;
+			console.log('Saved permissions file.');
 			permissionMap = require('./permissions.json');
 		});
 	}, 150);

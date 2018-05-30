@@ -41,11 +41,19 @@ let discordClient;
 exports.init = (client, app) => {
 	discordClient = client;
 	
-	if (!fs.existsSync('./modules/moderation-commands/data.json')) {
-		fs.writeFileSync('./modules/moderation-commands/data.json', JSON.stringify({}));
-	}
-	
-	data = require('./data');
+	setInterval(async () => {
+		 let exists = fs.exists('./modules/moderation-commands/punishments.json', err => {
+		 	if (err) throw err;
+		 });
+		
+		if (!exists) {
+		 	await fs.writeFile('./modules/moderation-commands/punishments.json', err => {
+		 		if (err) throw err;
+		 		console.log('Created punishments file.');
+		 		data = require('./punishments');
+		 	});
+		}
+	}, 150);
 	
 	app.addCommand({
 		name: 'mod',
@@ -107,8 +115,27 @@ exports.init = (client, app) => {
 						return;
 					}
 					
-					const permanent = ags.length === 3;
+					const permanent = args.length === 3;
 					exports.mute(member.id, permanent, permanent ? args[2] : args[1], msg.author.id, permanent ? -0 : args[1]);
+				}
+			},
+			{
+				name: 'info',
+				usage: '.mod info <username#discriminator>',
+				description: 'To view a detailed description of a players punishment record.',
+				arguments: 1,
+				execute: (msg, args) => {
+					if (!args[0].match(discordUsernameRegex)) {
+						msg.channel.send(`Can't find user ${args[0]}.`);
+						return;
+					}
+					
+					let nameArgs = args[0].split('#');
+					let member = discordClient.guilds.array()[0].members.find(m => m.user.username === nameArgs[0] && m.user.discriminator === nameArgs[1]);
+					
+					if (member === null && member === undefined) {
+						msg.channel.send('') //TODO
+					}
 				}
 			}
 		]
@@ -149,8 +176,12 @@ exports.ban = (memberId, permanent, reason, executorId, duration) => {
 };
 
 function save() {
-	fs.writeFileSync('./modules/moderation-commands/data.json');
-	data = require('./data');
+	setInterval(async () => {
+		await fs.writeFile('./modules/moderation-commands/punishments.json', data, err => {
+			if (err) throw err;
+			data = require('./punishments');
+		});
+	}, 150);
 }
 
 exports.isBanned = userId => {
