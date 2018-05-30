@@ -38,7 +38,7 @@ let data = {
 
 const discordUsernameRegex = /^[A-Za-z.\s]+#\d\d\d\d/g;
 let discordClient;
-i
+
 exports.init = (client, app) => {
 	discordClient = client;
 	
