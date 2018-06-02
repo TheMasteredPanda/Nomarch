@@ -54,7 +54,8 @@ async function play(entry, settings, connection) {
 exports.init = (client, app) => {
 	app.addCommand({
 		name: 'music',
-		usage: 'Play a song in a channel.',
+		usage: `${app.getCommandPrefix()}music <child command>.`,
+		description: 'Play a song in a channel.',
 		execute: null,
 		children: [
 			{
@@ -64,16 +65,17 @@ exports.init = (client, app) => {
 				permission: 'nomarch.music.queue',
 				execute: (msg, args) => {
 					if (args.length === 0) {
-						if (msg.member.voiceChannel.name !== config.channel) {
+						if (!info.channel) {
+							util.sendError(msg.channel, msg.author, `I'm not in a voice channel.`);
+							return;
+						}
+						
+						if (!msg.member.voiceChannel || msg.member.voiceChannel.name !== info.channel) {
+							util.sendError(msg.channel, msg.author, `You're not in a voice channel.`);
 							return;
 						}
 						
 						if (!app.isCommandChannel(msg.channel)) {
-							return;
-						}
-						
-						if (!info.channel) {
-							util.sendError(msg.channel, msg.author, `I'm not in a voice channel.`);
 							return;
 						}
 						
@@ -84,6 +86,7 @@ exports.init = (client, app) => {
 						
 						
 						let embed = util.embed();
+						embed.setColor('GREY');
 						
 						for (let i = 0; i < info.queue.length; i++) {
 							let entry = info.queue[i];
@@ -267,7 +270,7 @@ exports.init = (client, app) => {
 						
 						
 						dispatcher.resume();
-						util.sendError(msg.channel, msg.author, 'Resuming..');
+						util.send(msg.channel, msg.author, 'Resuming..');
 					}
 				}
 			},

@@ -25,7 +25,7 @@ exports.init = (client, app) => {
 		
 		if (!exists) {
 			await fs.writeFile('./modules/permission-manager/permissions.json', JSON.stringify(permissionMap), err => {
-				if (err) throw err;
+				if (err) console.error(err);
 				console.log('Created permissions config.');
 				permissionMap = require('./permissions');
 			})
