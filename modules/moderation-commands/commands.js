@@ -4,16 +4,7 @@ const nodeUtil = require('util');
 const setImmediatePromise = nodeUtil.promisify(setImmediate);
 
 
-var punishments = {
-	id: {
-		current: {
-		
-		},
-		history: {
-		
-		}
-	}
-};
+var punishments = {};
 const userRegex = /^[A-Za-z.\s]+#\d\d\d\d/g;
 var discordClient;
 
@@ -34,7 +25,7 @@ exports.init = (client, app) => {
 		} else {
 			punishments = require('./punishments.json');
 		}
-	}, 100);
+	}, 150);
 	
 	app.addCommand({
 		name: 'mod',
@@ -67,7 +58,7 @@ exports.init = (client, app) => {
 					}
 					
 					
-					let clone = args.clone();
+					let clone = args.slice(0);
 					clone.splice(clone.length / 1);
 					let reason = clone.join(' ');
 					
@@ -154,31 +145,34 @@ function isMuted(memberId) {
 }
 
 function ban(permanent, info) {
-	if (punishments.hasOwnProperty(info.member.id)) {
+	if (!punishments.hasOwnProperty(info.member.id)) {
 		punishments[info.member.id] = {
 			current: {},
 			history: {}
 		}
 	}
 	
-	if (permanent) {
-		punishments[info.member.id].current.push({
-			type: 'PERMBAN',
-			reason: info.reason,
-			by: info.by.id,
-			at: info.at
-		});
-	} else {
-		punishments[info.member.id].current.push({
-			type: 'TEMPBAN',
-			reason: info.reason,
-			by: info.by.id,
-			at: info.at,
-			duration: info.duration
-		});
+	if (isBanned(info.member.id)) {
+		return false;
 	}
 	
-	save();
+	
+	let type = permanent ? 'PERMBAN' : 'TEMPBAN';
+	
+	let entry = {
+		type: type,
+		reason: info.reason,
+		by: info.by,
+		at: info.at,
+	};
+	
+	if (!permanent) {
+		entry.duration = info.duration;
+	}
+	
+	punishments[info.member.id].current[punishments[info.member.id].length + 1] = entry;
+	discordClient.guilds.array()[0].ban(info.member.user, {reason: info.reason}).then(() => save());
+	return true;
 }
 
 function mute(permanent, info) {
@@ -189,8 +183,12 @@ function mute(permanent, info) {
 		}
 	}
 	
+	if (isMuted(info.member.id)) {
+		return false;
+	}
+	
 	let entry = {
-		type: permanent ? 'PERMBAN' : 'TEMPBAN',
+		type: permanent ? 'PERMMUTE' : 'TEMPMUTE',
 		reason: info.reason,
 		by: info.by,
 		at: info.at,
@@ -200,8 +198,9 @@ function mute(permanent, info) {
 		entry.duration = info.duration;
 	}
 	
-	punishments[info.member.id].current.push(entry);
+	punishments[info.member.id].current[punishments[info.member.id].length + 1] = entry;
 	save();
+	return true;
 }
 
 function unban(id) {
@@ -269,9 +268,9 @@ function unmute(id) {
 
 function save() {
 	setTimeout(async () => {
-		await fs.writeFile('./punishments.json', JSON.stringify(punishments), err => {
+		await fs.writeFile('./modules/moderation-commands/punishments.json', JSON.stringify(punishments), err => {
 			if (err) console.error(err);
 			punishments = require('./punishments.json');
 		})
-	}, 100)
+	}, 150)
 }
