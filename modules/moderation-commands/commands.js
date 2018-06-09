@@ -1,9 +1,9 @@
 const fs = require('fs');
 const util = require('../utilities/utility_commands');
-var idCache;
-var punishments = {};
+let idCache;
+let punishments = {};
 const userRegex = /^[A-Za-z.\s]+#\d\d\d\d/g;
-var discordClient;
+let discordClient;
 
 exports.init = (client, app) => {
 	discordClient = client;
@@ -24,6 +24,33 @@ exports.init = (client, app) => {
 			punishments = require('./punishments.json');
 		}
 	}, 150);
+	
+	
+	setInterval(async () => {
+		if (!punishments) {
+			return;
+		}
+		
+		for (let key in punishments) {
+			if (!punishments.hasOwnProperty(key)) {
+				continue;
+			}
+			
+			let e = punishments[key];
+			
+			if (e.current.length === 0) {
+				return;
+			}
+			
+			for (let i = 0; i < e.current.length; i++) {
+				let punishmentEntry = e.current[i];
+				
+				if (punishmentEntry.type === 'PERMMUTE' || punishmentEntry.type === 'TEMPMUTE') {
+					punishmentEntry.duration--;
+				}
+			}
+		}
+	}, 1000);
 	
 	app.addCommand({
 		name: 'mod',
@@ -71,7 +98,7 @@ exports.init = (client, app) => {
 						let embed = util.embed();
 						embed.setTitle('Permanently banned member.');
 						embed.addField('Member Banned', args[0]);
-						if (reason !== undefined && reason !== null && reason !== "") embed.addField('reason', reason);
+						if (reason) embed.addField('reason', reason);
 						msg.channel.send(embed);
 					} else {
 						util.sendError(msg.channel, msg.author, `Failed to ban ${args[0]} for some reason.`);
@@ -90,32 +117,31 @@ exports.init = (client, app) => {
 						return;
 					}
 					
-					let nameArgs = args[0].split('#');
-					
 					setTimeout(async () => {
-						let bans = await msg.guild.fetchBans();
+						let nameArgs = args[0].split('#');
+						let bans = await discordClient.guilds.array()[0].fetchBans();
 						
-						let user = await bans.find(u => u.username === nameArgs[0] && u.discriminator === nameArgs[1]);
+						let member = await bans.find(u => u.username === nameArgs[0] && u.discriminator === nameArgs[1]);
 						let id = idCache.getID(args[0]);
 						
-						if ((user === null || user === undefined) && id === null) {
+						if ((member === null || member === undefined) && id === null) {
 							util.sendError(msg.channel, msg.author, `Couldn't find ${args[0]} in the ban list on this guild.`);
 							return true;
 						}
 						
 						if (id === null) {
-							id = user.id;
+							id = member.user.id;
 						}
 						
 						if (!isBanned(id)) {
-							util.sendError(msg.channel, msg.author, `${user.username} is not banned.`);
+							util.sendError(msg.channel, msg.author, `${args[0]} is not banned.`);
 							return;
 						}
 						
 						if (await unban(id)) {
 							util.send(msg.channel, msg.author, `Unbanned member ${args[0]}.`);
 						} else {
-							util.sendError(msg.channel, msg.author, `Failed to unban ${user[0]}.`);
+							util.sendError(msg.channel, msg.author, `Failed to unban ${args[0]}.`);
 						}
 					}, 150);
 				}
@@ -133,16 +159,16 @@ exports.init = (client, app) => {
 					}
 					
 					let nameArgs = args[0].split('#');
-					let user = discordClient.guilds.array()[0].members.find(m => m.user.username === nameArgs[0] && m.user.discriminator === nameArgs[1]);
+					let member = discordClient.guilds.array()[0].members.find(m => m.user.username === nameArgs[0] && m.user.discriminator === nameArgs[1]);
 					let id = idCache.getID(args[0]);
 					
-					if ((user === undefined || user === null) && id === null) {
+					if ((member === undefined || member === null) && id === null) {
 						util.sendError(msg.channel, msg.author, `Couldn't find ${args[0]} in the guild.`);
 						return;
 					}
 					
 					if (id === null) {
-						id = user.id;
+						id = member.user.id;
 					}
 					
 					if (!punishments.hasOwnProperty(id)) {
@@ -173,6 +199,159 @@ exports.init = (client, app) => {
 					}
 					
 					msg.channel.send(embed);
+				}
+			},
+			{
+				name: 'tempban',
+				usage: `${app.getCommandPrefix()}mod tempban <username#discriminator> <duration> <reason>`,
+				description: 'Temporarily ban a member.',
+				arguments: 2,
+				permission: 'nomarch.mod.tempban',
+				execute: (msg, args) => {
+					if (!args[0].match(discordClient)) {
+						util.sendError(msg.channel, msg.author, `Couldn't find user ${args[0]}.`);
+						return;
+					}
+					
+					let nameArgs = args[0].split('#');
+					let member = discordClient.guilds.array()[0].members.find(m => m.user.username === nameArgs[0] && m.user.discriminator === nameArgs[1]);
+					
+					if (member === undefined || member === null) {
+						util.sendError(msg.channel, msg.author, `${args[0]} couldn't be found in this guild.`);
+						return;
+					}
+					
+					if (isBanned(member.user.id)) {
+						util.sendError(msg.channel, msg.author, `User ${args[0]} is already banned.`);
+						return;
+					}
+					
+					if (typeof args[1] !== 'number') {
+						util.sendError(msg.channel, msg.author, `Argument ${args[1]} is not a number, it must be a number (e.g. 60 - for 60 seconds).`);
+					}
+					
+					let reason = null;
+					
+					if (args.length > 2) {
+						let clone = args.splice(0);
+						clone.shift();
+						clone.shift();
+						reason = clone.join(' ');
+					}
+					
+					let result = ban(false, {
+						member: user,
+						reason: reason,
+						by: msg.author.id,
+						at: Date.now(),
+						duration: args[1]
+					});
+					
+					if (result) {
+						let embed = util.embed();
+						embed.setTitle('Temporarily banned member.');
+						embed.addField('Member', args[0], true);
+						if (reason) embed.addField('Reason', reason, true);
+						embed.addField('Duration', args[1], true);
+						embed.addField('By', msg.author.tag);
+						msg.channel.send(embed);
+					} else {
+						util.sendError(msg.channel, msg.author, `Couldn't ban user ${args[0]}.`);
+					}
+				}
+			},
+			{
+				name: 'mute',
+				usage: `${app.getCommandPrefix()}mod mute <username#discriminator> <reason>`,
+				description: 'Permanently mute a member.',
+				arguments: 1,
+				permission: 'nomarch.mod.mute',
+				execute: (msg, args) => {
+					if (!args[0].match(userRegex)) {
+						util.sendError(msg.channel, msg.author, `Couldn't find user ${args[0]}.`);
+						return;
+					}
+					
+					let nameArgs = args[0].split('#');
+					let member = client.guilds.array()[0].members.find(m => m.user.username === nameArgs[0] && m.user.discriminator === nameArgs[1]);
+					
+					if (member === undefined || member === null) {
+						util.sendError(msg.channel, msg.author, `Couldn't find member ${args[0]}.`);
+						return true;
+					}
+					
+					if (isMuted(member.id))  {
+						util.sendError(msg.channel, msg.author, `${args[0]} is already muted.`);
+						return;
+					}
+					
+					let reason = null;
+					
+					if (args.length > 1) {
+						let clone = args.splice(0);
+						clone.shift();
+						reason = clone.join(' ');
+					}
+					
+					let result = mute(true, {
+						member: member,
+						type: type,
+						reason: reason,
+						by: msg.author.id,
+						at: Date.now(),
+					});
+					
+					if (result) {
+						let embed = util.embed();
+						embed.setTitle(`Temporarily muted member.`);
+						embed.addField(`Member Muted`, member.user.tag, true);
+						if (reason) embed.addField(`Reason`, reason, true);
+						msg.channel.send(embed);
+					} else {
+						util.sendError(msg.channel, msg.author, `Failed to mute member ${args[0]}.`);
+					}
+				}
+			},
+			{
+				name: 'unmute',
+				usage: `${app.getCommandPrefix()}mod unmute <username#discriminator>`,
+				description: 'Unmute a muted member.',
+				permission: 'nomarch.mod.unmute',
+				arguments: 1,
+				execute: (msg, args) => {
+					if (!args[0].match(userRegex)) {
+						util.sendError(msg.channel, msg.author, `Couldn't find user ${args[0]}`);
+						return;
+					}
+					
+					let nameArgs = args[0].split('#');
+					let member = client.guilds.array()[0].find(m => m.user.username === nameArgs[0] && m.user.discriminator === nameArgs[1]);
+					let id = idCache.getID(args[0]);
+					
+					if ((member === undefined || member === null) && id === null) {
+						util.sendError(msg.channel, msg.author, `Couldn't find ${args[0]} on guild.`);
+						return;
+					}
+					
+					if (id === null) {
+						id = member.id;
+					}
+					
+					if (!isMuted(id)) {
+						util.sendError(msg.channel, msg.author, `${args[0]} isn't muted.`);
+						return;
+					}
+					
+					setTimeout(async () => {
+						let result = await unmute(id);
+						
+						if (result) {
+							util.send(msg.channel, msg.author, `Unmuted ${args[0]}.`)
+						} else {
+							util.sendError(msg.channel, msg.author, `Couldn't unmute ${args[0]}.`)
+						}
+						
+					}, 150);
 				}
 			}
 		]
@@ -251,7 +430,7 @@ function mute(permanent, info) {
 		}
 	}
 	
-	if (isMuted(info.member.id)) {
+	if (isBanned(info.member.id)) {
 		return false;
 	}
 	
@@ -271,7 +450,6 @@ function mute(permanent, info) {
 	
 	
 	punishments[info.member.id].current.push(entry);
-	save();
 	return true;
 }
 
@@ -297,25 +475,21 @@ async function unban(id) {
 		return false;
 	}
 	
-	console.log(`Position ${position}.`);
-	
-	/*let bans = await discordClient.guilds.first().fetchBans();
+	let bans = await discordClient.guilds.first().fetchBans();
 	let user = await bans.get(id);
 	
 	if (user === undefined || user === null) {
 		console.log('User is either null or undefined.');
 		return false;
-	}*/
+	}
 	
 	
 	await punishments[id].current.splice(Math.floor(punishments[id].current / position), 1);
-	console.log(`Current punishments of ${id}: ${JSON.stringify(punishments[id].current)}`);
 	await punishments[id].history.push(entry); //TODO add various attributes, like if the ban ended prematurely, the date that it ended, etc.
-	/*await discordClient.guilds.first().unban(id).then(() => {
+	await discordClient.guilds.first().unban(id).then(() => {
 		console.log(`Unbanned member ${args[0]}.`);
 		save();
-	});*/ //TODO add a reason?
-	await save();
+	});
 	return true;
 }
 
@@ -352,8 +526,6 @@ async function unmute(id) {
 }
 
 function save() {
-	console.log(`Saving punishment data: ${JSON.stringify(punishments, util.censor(punishments))}`);
-	
 	setTimeout(async () => {
 		await fs.writeFile('./modules/moderation-commands/punishments.json', JSON.stringify(punishments), err => {
 			if (err) console.error(err);

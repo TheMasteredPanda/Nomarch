@@ -2,6 +2,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client();
 const fs = require('fs');
 const util = require('util');
+const nomarchUtil = require('./modules/utilities/utility_commands');
 
 var config = {
 	apiKey: null,
@@ -49,6 +50,7 @@ commands = [
         usage: '.test <command>',
 		description: 'To test that the command is registered.',
 		permission: 'nomarch.test',
+		guildOnlyCommand: true,
         execute: (msg, args) => {
             msg.channel.send('Test complete.')
         },
@@ -81,16 +83,20 @@ function onCommand(msg, args, cmd) {
 	
 	if (args.length > 1) {
 		if (args[0] !== undefined) {
-			if (args[1] === 'usage') {
-				const embed = new Discord.RichEmbed();
-				embed.addField('Command Usage:', cmd.usage);
-				msg.channel.send(embed);
-				return;
-			}
-			
-			if (args[1] === 'desc' || args[1] === 'description') {
-				const embed = new Discord.RichEmbed();
-				embed.addField('Command Description:', cmd.description);
+			if (args[1] === 'info') {
+				const embed = nomarchUtil.embed();
+				embed.setTitle(`Command information for ${cmd.name}.`);
+				if (cmd.hasOwnProperty('usage')) embed.addField('Usage', cmd.usage, true);
+				if (cmd.hasOwnProperty('description')) embed.addField('Description', cmd.description, true);
+				let childCommands = [];
+				
+				if (cmd.hasOwnProperty('children')) {
+					for (let key in cmd.children) {
+						childCommands.push(cmd.children[key].name);
+					}
+				}
+				if (cmd.hasOwnProperty('permission')) embed.addField('Permission Node', cmd.permission, true);
+				if (childCommands.length !== 0) embed.addField('Children', childCommands.join(', '),);
 				msg.channel.send(embed);
 				return;
 			}
@@ -122,6 +128,11 @@ function onCommand(msg, args, cmd) {
 			msg.channel.send('Not enough arguments were supplied for this command.');
 			return;
 		}
+	}
+	
+	if (!msg.guild && (!cmd.hasOwnProperty('guildOnlyCommand') || cmd.guildOnlyCommand)) {
+		nomarchUtil.sendError(msg.channel, msg.author, `Command ${cmd.name} os a guild only command.`);
+		return;
 	}
 	
 	console.log(`Executing command ${cmd.name} with args ${args}.`);
