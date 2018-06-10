@@ -205,7 +205,6 @@ fs.readdir('./modules', async (error, list) => {
 			let jsModule = await require('./modules/' + module + '/' + entry);
 		
 			if (typeof jsModule.init !== 'function') {
-				console.error(`Module ${module}/${entry} did not have the init function. Could not initiate this module.`);
 				continue;
 			}
 		
